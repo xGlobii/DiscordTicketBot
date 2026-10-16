@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 import sqlite3
 import datetime
+from discord.utils import format_dt
 
 load_dotenv()
 
@@ -52,7 +53,7 @@ class SqLiteManager():
                 title TEXT,
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                close_by_id INTEGER NULL,
+                closed_by_id INTEGER NULL,
                 closed_at TIMESTAMP NULL
                 )
                 """
@@ -63,6 +64,12 @@ class SqLiteManager():
             cursor = db.cursor()
             cursor.execute("""SELECT support_role_id, ticket_channel_id FROM config WHERE guild_id = ?""", (guild_id,))
             return cursor.fetchone()
+
+    def get_tickets(self, user_id: int, offset: int):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute("""SELECT title, description, created_at, closed_by_id, closed_at FROM tickets WHERE creator_id = ? LIMIT 10 OFFSET ?""", (user_id, offset))
+            return cursor.fetchall()
 
 
 db = SqLiteManager()
@@ -148,6 +155,50 @@ class DiscordUi(discord.ui.View):
         form = TicketModal(support_role_id=support_role_id)
         await interaction.response.send_modal(form)
 
+class PaginationView(discord.ui.View):
+    def __init__(self, user: discord.User, current_page = 0):
+        super().__init__()
+        self.current_page = current_page
+        self.user = user
+
+    def generate_embed(self):
+
+        ticket_description = f"Title | Description | Created At | Closed By | Closed At\n"
+
+        tickets = db.get_tickets(user_id=self.user.id, offset=self.current_page * 10)
+
+        for ticket in tickets:
+            title, description, created_at, closed_by_id, closed_at = ticket
+
+            dt_closed: datetime
+            time_closed: str = ""
+            closed_by:str = "Open"
+
+            dt_created = datetime.datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")
+            dt_created = dt_created.replace(tzinfo=datetime.timezone.utc)
+            time_created = format_dt(dt_created, style="F")
+            if closed_at is not None:
+                dt_closed = datetime.datetime.strptime(closed_at, "%Y-%m-%d %H:%M:%S")
+                dt_closed = dt_closed.replace(tzinfo=datetime.timezone.utc)
+                time_closed = format_dt(dt_closed, style="F")
+                closed_by = f"<@{closed_by_id}>"
+
+            ticket_description += f"{title} - {description} - {time_created} - {closed_by} - {time_closed}\n"
+
+        embed = discord.Embed(
+                    color=discord.Color.dark_blue(),
+                    type="rich",
+                    title=f"{self.user.global_name} tickets",
+                    description=ticket_description,
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+
+        return embed
+
+    @discord.ui.button(label=">", custom_id="next_page", style=discord.ButtonStyle.primary)
+    async def nextPageBtn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("Zostałem kliknięty", ephemeral=True)
+
 class MyClient(discord.Client):
 
     def __init__(self, *, intents: discord.Intents):
@@ -204,10 +255,16 @@ async def prepare(interaction: discord.Interaction, ticket_channel: discord.Text
 
     return
 
-
 @client.tree.command(name="ping", description="Testowa komenda")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("Pong!")
+
+@client.tree.command(name="tickets", description="Get user tickets")
+async def tickets(interaction: discord.Interaction, user: discord.User):
+    view = PaginationView(user)
+    generated_embed = view.generate_embed()
+    await interaction.user.send(embed=generated_embed, view=view)
+    await interaction.response.send_message("Tickety użytkownika wysłane w wiadomości prywatnej", ephemeral=True)
 
 token = os.getenv('DISCORD_TOKEN')
 client.run(token)

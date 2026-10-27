@@ -2,25 +2,25 @@ import discord
 from discord import app_commands
 import os
 from dotenv import load_dotenv
-import sqlite3
 import datetime
-from discord.utils import format_dt
+from discord.ext import commands
 
 from sql_lite_manager import SqLiteManager
-from views import PaginationView, DiscordUi, CloseTicketBtn
+from views import DiscordUi, CloseTicketBtn
 
 load_dotenv()
 
 db = SqLiteManager()
 
-class MyClient(discord.Client):
+class MyClient(commands.Bot):
 
     def __init__(self, *, intents: discord.Intents):
-        super().__init__(intents=intents)
-        self.tree = app_commands.CommandTree(self)
+        super().__init__(command_prefix="!", intents=intents)
+        # self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
         # Szybkie testowanie
+        await self.load_extension("bot_commands")
         MY_GUILD = discord.Object(id=1559125242272550962)
         self.tree.copy_global_to(guild=MY_GUILD)
         await self.tree.sync(guild=MY_GUILD)
@@ -94,30 +94,6 @@ async def prepare(interaction: discord.Interaction, ticket_channel: discord.Text
     await interaction.response.send_message(f"Ticket channel created", ephemeral=True)
 
     return
-
-@client.tree.command(name="ping", description="Testowa komenda")
-async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message("Pong!")
-
-@client.tree.command(name="tickets", description="Get user tickets")
-async def tickets(interaction: discord.Interaction, user: discord.User):
-    view = PaginationView(user)
-    generated_embed = view.generate_embed()
-    await interaction.user.send(embed=generated_embed, view=view)
-    await interaction.response.send_message("Tickety użytkownika wysłane w wiadomości prywatnej", ephemeral=True)
-
-@client.tree.command(name="invite", description="Get bot invite link")
-async def invite(interaction: discord.Interaction):
-    await interaction.response.send_message(os.getenv('INVITE_URL'),ephemeral=True)
-
-@client.tree.command(name="set_prefix", description="Configure server side command prefix")
-async def setPrefix(interaction: discord.Interaction, prefix: str):
-    new_nickname = f"Nugget [{prefix}]"
-    try:
-        await interaction.guild.me.edit(nick=new_nickname)
-        await interaction.response.send_message(f"Server prefix is now: {prefix}")
-    except:
-        await interaction.response.send_message(f"Server prefix is now: {prefix}")
 
 token = os.getenv('DISCORD_TOKEN')
 client.run(token)

@@ -6,198 +6,12 @@ import sqlite3
 import datetime
 from discord.utils import format_dt
 
+from sql_lite_manager import SqLiteManager
+from views import PaginationView, DiscordUi, CloseTicketBtn
+
 load_dotenv()
 
-class SqLiteManager():
-    def __init__(self, db_path: str = "database.sqlite"):
-        self.db_path = db_path
-        self.initiate_tables()
-
-    def save_config(self, guild_id: int, support_role_id: int, ticket_channel_id: int) -> None:
-        with sqlite3.connect(self.db_path) as db:
-            cursor = db.cursor()
-            cursor.execute(
-                """INSERT OR REPLACE INTO config (guild_id, support_role_id, ticket_channel_id) VALUES (?, ?, ?)"""
-                , (guild_id, support_role_id, ticket_channel_id)
-            )
-
-    def save_ticket(self, ticket_id: int, guild_id: int, creator_id: int, title: str, description: str):
-        with sqlite3.connect(self.db_path) as db:
-            cursor = db.cursor()
-            cursor.execute(
-                """ INSERT INTO tickets (ticket_id, guild_id, creator_id, title, description) VALUES (?, ?, ?, ?, ?)""",
-                (ticket_id, guild_id, creator_id, title, description)
-            )
-
-    def close_ticket(self, ticket_id: int, closed_by_id: int):
-        with sqlite3.connect(self.db_path) as db:
-            cursor = db.cursor()
-            cursor.execute("""UPDATE tickets SET closed_by_id = ?, closed_at = CURRENT_TIMESTAMP WHERE ticket_id = ?""", (closed_by_id, ticket_id))
-
-    def initiate_tables(self) -> None:
-        with sqlite3.connect(self.db_path) as db:
-            cursor = db.cursor()
-            cursor.execute(
-                """CREATE TABLE IF NOT EXISTS config (
-                guild_id INTEGER PRIMARY KEY,
-                support_role_id INTEGER,
-                ticket_channel_id INTEGER
-                )"""
-            )
-
-            cursor.execute(
-                """CREATE TABLE IF NOT EXISTS tickets(
-                ticket_id INTEGER PRIMARY KEY,
-                guild_id INTEGER,
-                creator_id INTEGER,
-                title TEXT,
-                description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                closed_by_id INTEGER NULL,
-                closed_at TIMESTAMP NULL
-                )
-                """
-            )
-
-    def get_config(self, guild_id: int):
-        with sqlite3.connect(self.db_path) as db:
-            cursor = db.cursor()
-            cursor.execute("""SELECT support_role_id, ticket_channel_id FROM config WHERE guild_id = ?""", (guild_id,))
-            return cursor.fetchone()
-
-    def get_tickets(self, user_id: int, offset: int):
-        with sqlite3.connect(self.db_path) as db:
-            cursor = db.cursor()
-            cursor.execute("""SELECT title, description, created_at, closed_by_id, closed_at FROM tickets WHERE creator_id = ? LIMIT 10 OFFSET ?""", (user_id, offset))
-            return cursor.fetchall()
-
-
 db = SqLiteManager()
-
-class TicketModal(discord.ui.Modal, title="Create ticket"):
-    def __init__(self, support_role_id: int):
-        super().__init__()
-        self.support_role_id = support_role_id
-
-    topic = discord.ui.TextInput(
-        label="Temat zgłoszenia",
-        style=discord.TextStyle.short,
-        placeholder="Opisz krótko swój problem",
-        required=True
-    )
-
-    description = discord.ui.TextInput(
-        label="Opis",
-        style=discord.TextStyle.long,
-        placeholder="Opisz szczegółowo swój problem",
-        required=True
-    )
-
-    async def on_submit(self, interaction: discord.Interaction):
-        thread = await interaction.channel.create_thread(name=f"{interaction.user} - {self.topic.value} - Ticket", type=discord.ChannelType.private_thread)
-        support_role: discord.Role = interaction.guild.get_role(self.support_role_id)
-
-        embed = discord.Embed(
-            color=discord.Color.green(),
-            type="rich",
-            title=f"{self.topic.value}",
-            description=f"{self.description.value}",
-            timestamp=datetime.datetime.now(datetime.timezone.utc)
-        )
-
-        close_btn = CloseTicketBtn()
-
-        db.save_ticket(thread.id, interaction.guild.id, interaction.user.id, self.topic.value, self.description.value)
-        await thread.send(f"||{interaction.user.mention} {support_role.mention}||",embed=embed, view=close_btn)
-        await interaction.response.send_message("Twój ticket został utworzony!", ephemeral=True)
-
-class CloseTicketBtn(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Close ticket", custom_id="ticket_close", style=discord.ButtonStyle.danger)
-    async def closeTicketBtn(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-        guild_config = db.get_config(interaction.guild.id)
-
-        if guild_config is None:
-            await interaction.response.send_message(f"Wystąpił błąd z konfiguracją kanału dla tego serwera", ephemeral=True)
-            return
-
-        support_role_id, _ = guild_config
-
-        if interaction.user.get_role(support_role_id) is not None:
-            db.close_ticket(ticket_id=interaction.channel.id, closed_by_id=interaction.user.id)
-            await interaction.response.defer()
-            await interaction.channel.delete()
-        else:
-            await interaction.response.send_message(f"Tylko administrator może zamknąć ten ticket", ephemeral=True)
-
-class DiscordUi(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Create ticket", custom_id="ticket_create", style=discord.ButtonStyle.primary)
-    async def createTicketBtn(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-        guild_config = db.get_config(interaction.guild_id)
-
-        if guild_config is None:
-            await interaction.response.send_message(f"Wystąpił błąd z konfiguracją kanału dla tego serwera", ephemeral=True)
-            return
-
-        support_role_id, ticket_channel_id = guild_config
-
-        if interaction.channel.id != ticket_channel_id:
-            await interaction.response.send_message(f"Wystąpił błąd z konfiguracją kanału dla tego serwera", ephemeral=True)
-            return
-
-        form = TicketModal(support_role_id=support_role_id)
-        await interaction.response.send_modal(form)
-
-class PaginationView(discord.ui.View):
-    def __init__(self, user: discord.User, current_page = 0):
-        super().__init__()
-        self.current_page = current_page
-        self.user = user
-
-    def generate_embed(self):
-
-        ticket_description = f"Title | Description | Created At | Closed By | Closed At\n"
-
-        tickets = db.get_tickets(user_id=self.user.id, offset=self.current_page * 10)
-
-        for ticket in tickets:
-            title, description, created_at, closed_by_id, closed_at = ticket
-
-            dt_closed: datetime
-            time_closed: str = ""
-            closed_by:str = "Open"
-
-            dt_created = datetime.datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")
-            dt_created = dt_created.replace(tzinfo=datetime.timezone.utc)
-            time_created = format_dt(dt_created, style="F")
-            if closed_at is not None:
-                dt_closed = datetime.datetime.strptime(closed_at, "%Y-%m-%d %H:%M:%S")
-                dt_closed = dt_closed.replace(tzinfo=datetime.timezone.utc)
-                time_closed = format_dt(dt_closed, style="F")
-                closed_by = f"<@{closed_by_id}>"
-
-            ticket_description += f"{title} - {description} - {time_created} - {closed_by} - {time_closed}\n"
-
-        embed = discord.Embed(
-                    color=discord.Color.dark_blue(),
-                    type="rich",
-                    title=f"{self.user.global_name} tickets",
-                    description=ticket_description,
-                    timestamp=datetime.datetime.now(datetime.timezone.utc)
-                )
-
-        return embed
-
-    @discord.ui.button(label=">", custom_id="next_page", style=discord.ButtonStyle.primary)
-    async def nextPageBtn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("Zostałem kliknięty", ephemeral=True)
 
 class MyClient(discord.Client):
 
@@ -226,6 +40,32 @@ class MyClient(discord.Client):
             return
         if message.content.startswith('$hello'):
             await message.channel.send("Hello!")
+
+    async def on_guild_join(self, guild:discord.Guild):
+        welcome_channel = guild.system_channel
+        if welcome_channel == None:
+            for channel in guild.text_channels:
+                if channel.permissions_for(guild.me).send_messages:
+                    welcome_channel = channel
+                    break
+
+        if welcome_channel is not None:
+            description_msg = "``/prepare`` - prepares channel to be ticket channel\n"
+            description_msg += "``/tickets`` - displays all user tickets\n"
+            embed = discord.Embed(
+                color=discord.Color.blurple(),
+                title="Welcome",
+                description=description_msg,
+                timestamp=datetime.datetime.now(datetime.timezone.utc)
+            )
+            await welcome_channel.send(embed=embed)
+        else:
+            try:
+                if guild.owner is not None:
+                    await guild.owner.send("You added me to the server, " \
+                    "but I can't send messages. Please check my permissions to ensure I work properly")
+            except:
+                pass
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -265,6 +105,19 @@ async def tickets(interaction: discord.Interaction, user: discord.User):
     generated_embed = view.generate_embed()
     await interaction.user.send(embed=generated_embed, view=view)
     await interaction.response.send_message("Tickety użytkownika wysłane w wiadomości prywatnej", ephemeral=True)
+
+@client.tree.command(name="invite", description="Get bot invite link")
+async def invite(interaction: discord.Interaction):
+    await interaction.response.send_message(os.getenv('INVITE_URL'),ephemeral=True)
+
+@client.tree.command(name="set_prefix", description="Configure server side command prefix")
+async def setPrefix(interaction: discord.Interaction, prefix: str):
+    new_nickname = f"Nugget [{prefix}]"
+    try:
+        await interaction.guild.me.edit(nick=new_nickname)
+        await interaction.response.send_message(f"Server prefix is now: {prefix}")
+    except:
+        await interaction.response.send_message(f"Server prefix is now: {prefix}")
 
 token = os.getenv('DISCORD_TOKEN')
 client.run(token)

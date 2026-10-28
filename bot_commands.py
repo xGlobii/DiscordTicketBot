@@ -64,13 +64,13 @@ class GeneralCommands(commands.Cog):
         command_type=[
             app_commands.Choice(name="Tekst (wiadomość)", value="text"),
             app_commands.Choice(name="Embed (sformatowany tekst)", value="embed-text"),
+            app_commands.Choice(name="Prywatna wiadomość (DM)", value="dm-text"),
             app_commands.Choice(name="Counter (Licznik)", value="counter"),
-            app_commands.Choice(name="Kanał + rola", value="channel-role")
+            app_commands.Choice(name="Random (Losowa wartość)", value="random")
         ],
         permission=[
             app_commands.Choice(name="Wszyscy", value="none"),
             app_commands.Choice(name="Zarządzanie wiadomościami", value="manage_messages"),
-            app_commands.Choice(name="Zarządzanie kanałami", value="manage_channels"),
             app_commands.Choice(name="Administrator", value="administrator")
         ]
     )
@@ -90,8 +90,8 @@ class GeneralCommands(commands.Cog):
                     ephemeral=True)
                     return
 
-            if (c_type == "text" or c_type == "embed-text") and attributes is None:
-                await interaction.response.send_message("Komenda typu 'text' lub 'embed-text' musi mieć podaną treść w 'attributes'", ephemeral=True)
+            if (c_type == "text" or c_type == "embed-text" or c_type == "dm-text" or "random") and attributes is None:
+                await interaction.response.send_message("Komenda typu 'text', 'embed-text', 'dm-text' lub 'random' musi mieć podaną treść w 'attributes'", ephemeral=True)
                 return
 
             self.bot.db.save_command(interaction.guild_id, c_safe_name, c_type, c_permission, attributes)

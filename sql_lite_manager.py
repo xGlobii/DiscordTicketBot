@@ -128,3 +128,16 @@ class SqLiteManager():
             cursor = db.cursor()
             cursor.execute("""SELECT * FROM guild_commands WHERE guild_id = ?""", (guild_id, ))
             return cursor.fetchall()
+
+    def get_custom_command(self, guild_id: int, command_name: str):
+        with sqlite3.connect(self.db_path) as db:
+            db.row_factory = sqlite3.Row
+            cursor = db.cursor()
+            cursor.execute("""SELECT * FROM guild_commands WHERE guild_id = ? AND command_name = ?""", (guild_id, command_name))
+            return cursor.fetchone()
+    def get_and_increment_counter(self, guild_id: int, counter_name: str):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute("""UPDATE guild_counters SET counter_value = counter_value + 1 WHERE guild_id = ? AND counter_name = ?
+            RETURNING counter_value""", (guild_id, counter_name))
+            return cursor.fetchone()[0]

@@ -3,13 +3,12 @@ import os
 from dotenv import load_dotenv
 import datetime
 from discord.ext import commands
+import random
 
 from sql_lite_manager import SqLiteManager
 from views import DiscordUi, CloseTicketBtn
 
 load_dotenv()
-
-#db = SqLiteManager()
 
 def get_dynamic_prefix(bot, message):
     if not message.guild:
@@ -38,7 +37,7 @@ class MyClient(commands.Bot):
         #await self.tree.sync()
 
     async def on_ready(self):
-        activity = discord.Activity(type=discord.ActivityType.playing, name="Eating nuggets at KFC 🍗")
+        activity = discord.Activity(type=discord.ActivityType.playing, name="Eating chicken nuggets at KFC 🍗")
         await self.change_presence(status=discord.Status.online, activity=activity)
         print(f"Logged on a {self.user}")
 
@@ -46,10 +45,64 @@ class MyClient(commands.Bot):
     async def on_message(self, message):
         if message.author == self.user:
             return
-        if message.content.startswith('$hello'):
-            await message.channel.send("Hello!")
+
+        guild_prefix = self.guild_prefixes.get(message.guild.id)
+        if guild_prefix is None:
+            guild_prefix = '!'
+
+        #
+        #   ADD COMMAND PERMISSIONS
+        #
+        if message.content.startswith(guild_prefix):
+            full_command = message.content.split(' ')
+            command = full_command[0][len(guild_prefix):]
+            custom_command = self.db.get_custom_command(message.guild.id, command)
+            
+            if custom_command is None:
+                await message.channel.send("Nie znaleziono komendy")
+                return
+
+            c_type = custom_command["command_type"]
+
+            if c_type == "text":
+                await message.channel.send(custom_command["attributes"])
+                return
+
+            if c_type == "embed-text":
+
+                description = custom_command["attributes"].replace("\\n", "\n")
+
+                embed = discord.Embed(
+                    color=discord.Color.dark_blue(),
+                    type="rich",
+                    title=f"{command}",
+                    description=description,
+                    timestamp=datetime.datetime.now(datetime.timezone.utc))
+                await message.channel.send(embed=embed)
+                return
+
+            if c_type == "dm-text":
+                try:
+                    await message.author.send(custom_command["attributes"])
+                except:
+                    await message.reply("Masz zablokowane wiadomości prywatne")
+                return
+
+            if c_type == "counter":
+                counter_value = self.db.get_and_increment_counter(message.guild.id, command)
+                text = custom_command["attributes"]
+                text = text.replace("{counter}", str(counter_value))
+                await message.channel.send(text)
+                return
+
+            if c_type == "random":
+                values = custom_command["attributes"].split('|')
+                random_value = random.choice(values)
+                await message.channel.send(random_value)
+                return
+
         if message.content == self.user.mention:
-            await message.reply(f"Mój prefix na tym serwerze to {self.guild_prefixes.get(message.guild.id)}")
+            await message.reply(f"Mój prefix na tym serwerze to {guild_prefix}")
 
     async def on_guild_join(self, guild:discord.Guild):
         welcome_channel = guild.system_channel

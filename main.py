@@ -1,5 +1,4 @@
 import discord
-from discord import app_commands
 import os
 from dotenv import load_dotenv
 import datetime
@@ -10,12 +9,21 @@ from views import DiscordUi, CloseTicketBtn
 
 load_dotenv()
 
-db = SqLiteManager()
+#db = SqLiteManager()
+
+def get_dynamic_prefix(bot, message):
+    if not message.guild:
+        return '!'
+
+    return bot.guild_prefixes.get(message.guild.id, '!')
 
 class MyClient(commands.Bot):
 
     def __init__(self, *, intents: discord.Intents):
-        super().__init__(command_prefix="!", intents=intents)
+        self.db = SqLiteManager()
+        self.guild_prefixes = self.db.get_prefixes()
+        self.db.initiate_tables()
+        super().__init__(command_prefix=get_dynamic_prefix, intents=intents)
         # self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
@@ -40,6 +48,8 @@ class MyClient(commands.Bot):
             return
         if message.content.startswith('$hello'):
             await message.channel.send("Hello!")
+        if message.content == self.user.mention:
+            await message.reply(f"Mój prefix na tym serwerze to {self.guild_prefixes.get(message.guild.id)}")
 
     async def on_guild_join(self, guild:discord.Guild):
         welcome_channel = guild.system_channel
@@ -71,29 +81,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 client = MyClient(intents=intents)
-
-@app_commands.default_permissions(manage_channels=True)
-@client.tree.command(name="prepare", description="Prepares ticket channel")
-async def prepare(interaction: discord.Interaction, ticket_channel: discord.TextChannel, support_role: discord.Role):
-    if interaction.guild is None:
-        await interaction.response.send_message("This is guild command only")
-        return
-
-    db.save_config(interaction.guild_id, support_role_id=support_role.id, ticket_channel_id=ticket_channel.id)
-
-    embed = discord.Embed(
-            color=discord.Color.red(),
-            title="Create ticket",
-            type="rich",
-            description="Have an issue? Create ticket and let us know"
-        )
-    
-    btn = DiscordUi()
-
-    await ticket_channel.send(embed=embed, view=btn)
-    await interaction.response.send_message(f"Ticket channel created", ephemeral=True)
-
-    return
 
 token = os.getenv('DISCORD_TOKEN')
 client.run(token)

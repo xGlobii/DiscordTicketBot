@@ -47,7 +47,7 @@ class SqLiteManager():
                 """CREATE TABLE IF NOT EXISTS guild_counters(
                 guild_id INTEGER,
                 counter_name TEXT,
-                counter_value INTEGER,
+                counter_value INTEGER DEFAULT 0,
                 PRIMARY KEY(guild_id, counter_name)
                 )
                 """
@@ -111,4 +111,20 @@ class SqLiteManager():
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()
             cursor.execute("""SELECT title, description, created_at, closed_by_id, closed_at FROM tickets WHERE creator_id = ? LIMIT 10 OFFSET ?""", (user_id, offset))
+            return cursor.fetchall()
+
+    def save_command(self, guild_id: int, command_name: str, command_type: str, required_permission: str, attributes: str = None):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute("""INSERT INTO guild_commands (guild_id, command_name, command_type, required_permission, attributes)
+            VALUES (?, ? , ?, ?, ?)""", (guild_id, command_name, command_type, required_permission, attributes))
+
+            if (command_type == "counter"):
+                cursor.execute("""INSERT INTO guild_counters (guild_id, counter_name) VALUES (?, ?)""", (guild_id, command_name))
+
+    def get_guild_commands(self, guild_id: int):
+        with sqlite3.connect(self.db_path) as db:
+            db.row_factory = sqlite3.Row
+            cursor = db.cursor()
+            cursor.execute("""SELECT * FROM guild_commands WHERE guild_id = ?""", (guild_id, ))
             return cursor.fetchall()

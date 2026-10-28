@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from views import PaginationView, DiscordUi
 import os
-from sql_lite_manager import SqLiteManager
+import sqlite3
 
 class GeneralCommands(commands.Cog):
     def __init__(self, bot):
@@ -58,6 +58,62 @@ class GeneralCommands(commands.Cog):
         await interaction.response.send_message(f"Ticket channel created", ephemeral=True)
 
         return
+
+    @app_commands.command(name="add_command", description="Dodaje komendę serwerową")
+    @app_commands.choices(
+        command_type=[
+            app_commands.Choice(name="Tekst (wiadomość)", value="text"),
+            app_commands.Choice(name="Embed (sformatowany tekst)", value="embed-text"),
+            app_commands.Choice(name="Counter (Licznik)", value="counter"),
+            app_commands.Choice(name="Kanał + rola", value="channel-role")
+        ],
+        permission=[
+            app_commands.Choice(name="Wszyscy", value="none"),
+            app_commands.Choice(name="Zarządzanie wiadomościami", value="manage_messages"),
+            app_commands.Choice(name="Zarządzanie kanałami", value="manage_channels"),
+            app_commands.Choice(name="Administrator", value="administrator")
+        ]
+    )
+    async def add_command(self, interaction: discord.Interaction, command_name: str, command_type: app_commands.Choice[str], permission: app_commands.Choice[str], attributes: str = None):
+        c_type = command_type.value
+        c_permission = permission.value
+        c_safe_name = command_name.replace(' ', '_').lower()
+
+        try:
+            if c_type == "counter":
+                if attributes is None:
+                    attributes = "{counter}"
+                elif "{counter}" not in attributes:
+                    await interaction.response.send_message("Tworzysz licznik, ale nie podałeś zmiennej w atrybutach." \
+                    " Użyj tagu {counter} w swoim tekście" \
+                    " Np. 'Ilość zbanowanych osób {counter}'",
+                    ephemeral=True)
+                    return
+
+            if (c_type == "text" or c_type == "embed-text") and attributes is None:
+                await interaction.response.send_message("Komenda typu 'text' lub 'embed-text' musi mieć podaną treść w 'attributes'", ephemeral=True)
+                return
+
+            self.bot.db.save_command(interaction.guild_id, c_safe_name, c_type, c_permission, attributes)
+            await interaction.response.send_message(f"Utworzono komendę {c_safe_name} o typie {c_type} z uprawnieniami {c_permission}")
+        except sqlite3.IntegrityError:
+            await interaction.response.send_message(f"Komenda o nazwie {c_safe_name} już istnieje na tym serwerze", ephemeral=True)
+
+    @app_commands.command(name="server_commands", description="Wyświetla listę wszystkich komend serwerowych")
+    async def server_commands(self, interaction: discord.Interaction):
+        commands = self.bot.db.get_guild_commands(interaction.guild_id)
+
+        if not commands:
+            await interaction.response.send_message("Ten serwer nie ma utworzonych żadnych komend")
+            return
+
+        opis = ""
+        for cmd in commands:
+            c_name = cmd["command_name"]
+            c_type = cmd["command_type"]
+            opis += f"{c_name} - {c_type} \n"
+
+        await interaction.response.send_message(f"**Lista komend**:\n {opis}")
 
 async def setup(bot):
     await bot.add_cog(GeneralCommands(bot))

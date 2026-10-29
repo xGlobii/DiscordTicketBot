@@ -9,6 +9,7 @@ from sql_lite_manager import SqLiteManager
 from views import DiscordUi, CloseTicketBtn
 
 load_dotenv()
+token = os.getenv('DISCORD_TOKEN')
 
 def get_dynamic_prefix(bot, message):
     if not message.guild:
@@ -60,6 +61,19 @@ class MyClient(commands.Bot):
             
             if custom_command is None:
                 await message.channel.send("Nie znaleziono komendy")
+                return
+
+
+            required_permission = custom_command["required_permission"]
+
+            permissions = message.author.guild_permissions
+            
+            if required_permission == "none":
+                pass
+            elif required_permission != "none" and getattr(permissions, required_permission,  False):
+                pass
+            else:
+                await message.reply("Nie masz odpowiednich uprawnień, żeby użyć tej komendy")
                 return
 
             c_type = custom_command["command_type"]
@@ -135,5 +149,6 @@ intents.message_content = True
 
 client = MyClient(intents=intents)
 
-token = os.getenv('DISCORD_TOKEN')
+#token = os.getenv('DISCORD_TOKEN')
+
 client.run(token)

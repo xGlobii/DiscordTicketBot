@@ -9,10 +9,11 @@ class GeneralCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="ping", description="Testowa komenda")
+    @app_commands.command(name="ping", description="Ping pong")
     async def ping(self, interaction: discord.Interaction):
         await interaction.response.send_message("Pong!")
 
+    @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="tickets", description="Get user tickets")
     async def tickets(self, interaction: discord.Interaction, user: discord.User):
         view = PaginationView(user)
@@ -24,6 +25,7 @@ class GeneralCommands(commands.Cog):
     async def invite(self, interaction: discord.Interaction):
         await interaction.response.send_message(os.getenv('INVITE_URL'),ephemeral=True)
 
+    @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="set_prefix", description="Configure server side command prefix")
     async def setPrefix(self, interaction: discord.Interaction, prefix: str):
         new_nickname = f"Nugget [{prefix}]"
@@ -59,6 +61,7 @@ class GeneralCommands(commands.Cog):
 
         return
 
+    @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="add_command", description="Dodaje komendę serwerową")
     @app_commands.choices(
         command_type=[

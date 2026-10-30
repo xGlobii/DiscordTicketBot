@@ -24,18 +24,17 @@ class MyClient(commands.Bot):
         self.guild_prefixes = self.db.get_prefixes()
         self.db.initiate_tables()
         super().__init__(command_prefix=get_dynamic_prefix, intents=intents)
-        # self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
-        # Szybkie testowanie
-        await self.load_extension("bot_commands")
-        MY_GUILD = discord.Object(id=1559125242272550962)
-        self.tree.copy_global_to(guild=MY_GUILD)
-        await self.tree.sync(guild=MY_GUILD)
+        # Quick test
+        #await self.load_extension("bot_commands")
+        #MY_GUILD = discord.Object(id=1559125242272550962)
+        #self.tree.copy_global_to(guild=MY_GUILD)
+        #await self.tree.sync(guild=MY_GUILD)
+        await self.tree.sync()
         self.add_view(DiscordUi())
         self.add_view(CloseTicketBtn())
 
-        #await self.tree.sync()
 
     async def on_ready(self):
         activity = discord.Activity(type=discord.ActivityType.playing, name="Eating chicken nuggets at KFC 🍗")
@@ -51,16 +50,13 @@ class MyClient(commands.Bot):
         if guild_prefix is None:
             guild_prefix = '!'
 
-        #
-        #   ADD COMMAND PERMISSIONS
-        #
         if message.content.startswith(guild_prefix):
             full_command = message.content.split(' ')
             command = full_command[0][len(guild_prefix):]
             custom_command = self.db.get_custom_command(message.guild.id, command)
             
             if custom_command is None:
-                await message.channel.send("Nie znaleziono komendy")
+                await message.channel.send("Command not found")
                 return
 
 
@@ -73,7 +69,7 @@ class MyClient(commands.Bot):
             elif required_permission != "none" and getattr(permissions, required_permission,  False):
                 pass
             else:
-                await message.reply("Nie masz odpowiednich uprawnień, żeby użyć tej komendy")
+                await message.reply("You do not have the necessary permissions to use this command")
                 return
 
             c_type = custom_command["command_type"]
@@ -99,7 +95,7 @@ class MyClient(commands.Bot):
                 try:
                     await message.author.send(custom_command["attributes"])
                 except:
-                    await message.reply("Masz zablokowane wiadomości prywatne")
+                    await message.reply("You have disabled private messages")
                 return
 
             if c_type == "counter":
@@ -116,7 +112,7 @@ class MyClient(commands.Bot):
                 return
 
         if message.content == self.user.mention:
-            await message.reply(f"Mój prefix na tym serwerze to {guild_prefix}")
+            await message.reply(f"My prefix on this server is: {guild_prefix}")
 
     async def on_guild_join(self, guild:discord.Guild):
         welcome_channel = guild.system_channel
@@ -127,8 +123,16 @@ class MyClient(commands.Bot):
                     break
 
         if welcome_channel is not None:
-            description_msg = "``/prepare`` - prepares channel to be ticket channel\n"
-            description_msg += "``/tickets`` - displays all user tickets\n"
+            description_msg = "``/ping`` - Ping pong\n"
+            description_msg += "``/tickets`` - Get user tickets\n"
+            description_msg += "``/invite`` - Get bot invite link\n"
+            description_msg += "``/set_prefix`` - Configure server side command prefix\n"
+            description_msg += "``/prepare`` - Prepares ticket channel\n"
+            description_msg += "``/create_channel_and_role`` - Creates channel and locks it for new created role\n"
+            description_msg += "``/add_access`` - Adds access to specified role for specified channel\n"
+            description_msg += "``/remove_access`` - Removes access to specified role for specified channel\n"
+            description_msg += "``/create_command`` - Add new server command\n"
+            description_msg += "``/server_commands`` - Displays a list of all server commands"
             embed = discord.Embed(
                 color=discord.Color.blurple(),
                 title="Welcome",
@@ -148,7 +152,5 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 client = MyClient(intents=intents)
-
-#token = os.getenv('DISCORD_TOKEN')
 
 client.run(token)

@@ -1,4 +1,5 @@
 import sqlite3
+import os
 
 class SqLiteManager():
     def __init__(self, db_path: str = "database.sqlite"):
@@ -107,10 +108,10 @@ class SqLiteManager():
             cursor.execute("""SELECT guild_id, command_prefix FROM guild_config""")
             return dict(cursor.fetchall())
 
-    def get_tickets(self, user_id: int, offset: int):
+    def get_tickets(self, guild_id: int, user_id: int, offset: int):
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()
-            cursor.execute("""SELECT title, description, created_at, closed_by_id, closed_at FROM tickets WHERE creator_id = ? LIMIT 10 OFFSET ?""", (user_id, offset))
+            cursor.execute("""SELECT title, description, created_at, closed_by_id, closed_at FROM tickets WHERE creator_id = ? AND guild_id = ? LIMIT ? OFFSET ?""", (user_id, guild_id, int(os.getenv('RECORDS_PER_PAGE', '5')), offset))
             return cursor.fetchall()
 
     def save_command(self, guild_id: int, command_name: str, command_type: str, required_permission: str, attributes: str = None):
@@ -140,4 +141,10 @@ class SqLiteManager():
             cursor = db.cursor()
             cursor.execute("""UPDATE guild_counters SET counter_value = counter_value + 1 WHERE guild_id = ? AND counter_name = ?
             RETURNING counter_value""", (guild_id, counter_name))
+            return cursor.fetchone()[0]
+
+    def get_all_user_tickets(self, guild_id: int, user_id: int):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute("""SELECT COUNT(ticket_id) FROM tickets WHERE guild_id = ? AND creator_id = ?""", (guild_id, user_id))
             return cursor.fetchone()[0]

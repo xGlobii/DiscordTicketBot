@@ -16,10 +16,14 @@ class GeneralCommands(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="tickets", description="Get user tickets")
     async def tickets(self, interaction: discord.Interaction, user: discord.User):
-        view = PaginationView(user)
+        if interaction.guild is None:
+            await interaction.response.send_message("This is guild command only")
+            return
+        
+        view = PaginationView(self.bot, interaction.guild_id, user)
         generated_embed = view.generate_embed()
         await interaction.user.send(embed=generated_embed, view=view)
-        await interaction.response.send_message("Tickety użytkownika wysłane w wiadomości prywatnej", ephemeral=True)
+        await interaction.response.send_message("User tickets sent in a private message", ephemeral=True)
 
     @app_commands.command(name="invite", description="Get bot invite link")
     async def invite(self, interaction: discord.Interaction):
@@ -28,6 +32,10 @@ class GeneralCommands(commands.Cog):
     @app_commands.default_permissions(administrator=True)
     @app_commands.command(name="set_prefix", description="Configure server side command prefix")
     async def setPrefix(self, interaction: discord.Interaction, prefix: str):
+        if interaction.guild is None:
+            await interaction.response.send_message("This is guild command only")
+            return
+        
         new_nickname = f"Nugget [{prefix}]"
         try:
             await interaction.guild.me.edit(nick=new_nickname)
@@ -63,34 +71,80 @@ class GeneralCommands(commands.Cog):
 
     @app_commands.default_permissions(manage_channels=True, manage_roles=True)
     @app_commands.command(name="create_channel_and_role", description="Creates channel and locks it for new created role")
-    async def create_channel_and_role(self, interaction: discord.Interaction, channel_and_role_name: str):
+    @app_commands.choices(
+            channel_type=[
+                app_commands.Choice(name="Text", value="text"),
+                app_commands.Choice(name="Voice", value="voice"),
+                app_commands.Choice(name="Both (text and voice)", value="both")
+            ]
+        )
+    async def create_channel_and_role(self, interaction: discord.Interaction, channel_type: app_commands.Choice[str], channel_and_role_name: str):
+        if interaction.guild is None:
+            await interaction.response.send_message("This is guild command only")
+            return
+
         new_role = await interaction.guild.create_role(name=channel_and_role_name,color=discord.Color.blue())
         new_category_channel = await interaction.guild.create_category_channel(name="Command create channel")
 
         overwrites={
             interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            new_role: discord.PermissionOverwrite(view_channel=True)
+            new_role: discord.PermissionOverwrite(view_channel=True, connect=True, send_messages=True)
         }
-        new_channel = await interaction.guild.create_text_channel(name=channel_and_role_name, overwrites=overwrites,category=new_category_channel)
+
+        c_type = channel_type.value
+
+        if c_type == "text":
+            await interaction.guild.create_text_channel(name=channel_and_role_name, overwrites=overwrites, category=new_category_channel)
+        elif c_type == "voice":
+            await interaction.guild.create_voice_channel(name=channel_and_role_name, overwrites=overwrites, category=new_category_channel)
+        elif c_type == "both":
+            await interaction.guild.create_text_channel(name=channel_and_role_name, overwrites=overwrites, category=new_category_channel)
+            await interaction.guild.create_voice_channel(name=channel_and_role_name, overwrites=overwrites, category=new_category_channel)
+        
         await interaction.response.send_message("Channel and role created", ephemeral=True)
 
+    @app_commands.default_permissions(manage_channels=True)
+    @app_commands.command(name="add_access", description="Adds access to specified role for specified channel")
+    async def add_access(self, interaction: discord.Interaction, channel: discord.abc.GuildChannel, role: discord.Role):
+        if interaction.guild is None:
+            await interaction.response.send_message("This is guild command only")
+            return
+        
+        overwrites = discord.PermissionOverwrite(view_channel=True, send_messages=True, connect=True)
+        await channel.set_permissions(role, overwrite=overwrites)
+        await interaction.response.send_message("Done", ephemeral=True)
+
+    @app_commands.default_permissions(manage_channels=True)
+    @app_commands.command(name="remove_access", description="Removes access to specified role for specified channel")
+    async def remove_access(self, interaction: discord.Interaction, channel: discord.abc.GuildChannel, role: discord.Role):
+        if interaction.guild is None:
+            await interaction.response.send_message("This is guild command only")
+            return
+        
+        await channel.set_permissions(role, overwrite=None)
+        await interaction.response.send_message("Done", ephemeral=True)
+
     @app_commands.default_permissions(administrator=True)
-    @app_commands.command(name="create_command", description="Dodaje komendę serwerową")
+    @app_commands.command(name="create_command", description="Add new server command")
     @app_commands.choices(
         command_type=[
-            app_commands.Choice(name="Tekst (wiadomość)", value="text"),
-            app_commands.Choice(name="Embed (sformatowany tekst)", value="embed-text"),
-            app_commands.Choice(name="Prywatna wiadomość (DM)", value="dm-text"),
-            app_commands.Choice(name="Counter (Licznik)", value="counter"),
-            app_commands.Choice(name="Random (Losowa wartość)", value="random")
+            app_commands.Choice(name="Text (message)", value="text"),
+            app_commands.Choice(name="Embed (formated text)", value="embed-text"),
+            app_commands.Choice(name="Direct message (DM)", value="dm-text"),
+            app_commands.Choice(name="Counter", value="counter"),
+            app_commands.Choice(name="Random", value="random")
         ],
         permission=[
-            app_commands.Choice(name="Wszyscy", value="none"),
-            app_commands.Choice(name="Zarządzanie wiadomościami", value="manage_messages"),
+            app_commands.Choice(name="All", value="none"),
+            app_commands.Choice(name="Manage Messages", value="manage_messages"),
             app_commands.Choice(name="Administrator", value="administrator")
         ]
     )
     async def add_command(self, interaction: discord.Interaction, command_name: str, command_type: app_commands.Choice[str], permission: app_commands.Choice[str], attributes: str = None):
+        if interaction.guild is None:
+            await interaction.response.send_message("This is guild command only")
+            return
+        
         c_type = command_type.value
         c_permission = permission.value
         c_safe_name = command_name.replace(' ', '_').lower()
@@ -100,36 +154,40 @@ class GeneralCommands(commands.Cog):
                 if attributes is None:
                     attributes = "{counter}"
                 elif "{counter}" not in attributes:
-                    await interaction.response.send_message("Tworzysz licznik, ale nie podałeś zmiennej w atrybutach." \
-                    " Użyj tagu {counter} w swoim tekście" \
-                    " Np. 'Ilość zbanowanych osób {counter}'",
+                    await interaction.response.send_message("You're creating a counter, but you didn't specify a variable in the attributes." \
+                    " Use the {counter} tag in your text" \
+                    " For example, 'Number of banned users {counter}'",
                     ephemeral=True)
                     return
 
             if (c_type == "text" or c_type == "embed-text" or c_type == "dm-text" or "random") and attributes is None:
-                await interaction.response.send_message("Komenda typu 'text', 'embed-text', 'dm-text' lub 'random' musi mieć podaną treść w 'attributes'", ephemeral=True)
+                await interaction.response.send_message("Command of type 'text', 'embed-text', 'dm-text' or 'random' must include specified content in 'attributes'", ephemeral=True)
                 return
 
             self.bot.db.save_command(interaction.guild_id, c_safe_name, c_type, c_permission, attributes)
-            await interaction.response.send_message(f"Utworzono komendę {c_safe_name} o typie {c_type} z uprawnieniami {c_permission}")
+            await interaction.response.send_message(f"Command {c_safe_name} created")
         except sqlite3.IntegrityError:
-            await interaction.response.send_message(f"Komenda o nazwie {c_safe_name} już istnieje na tym serwerze", ephemeral=True)
+            await interaction.response.send_message(f"A command named {c_safe_name} already exists on this server", ephemeral=True)
 
-    @app_commands.command(name="server_commands", description="Wyświetla listę wszystkich komend serwerowych")
+    @app_commands.command(name="server_commands", description="Displays a list of all server commands")
     async def server_commands(self, interaction: discord.Interaction):
+        if interaction.guild is None:
+            await interaction.response.send_message("This is guild command only")
+            return
+
         commands = self.bot.db.get_guild_commands(interaction.guild_id)
 
         if not commands:
-            await interaction.response.send_message("Ten serwer nie ma utworzonych żadnych komend")
+            await interaction.response.send_message("No commands have been created on this server")
             return
 
         opis = ""
         for cmd in commands:
             c_name = cmd["command_name"]
             c_type = cmd["command_type"]
-            opis += f"{c_name} - {c_type} \n"
+            opis += f"!{c_name}\n"
 
-        await interaction.response.send_message(f"**Lista komend**:\n {opis}")
+        await interaction.response.send_message(f"**Command list**:\n {opis}")
 
 async def setup(bot):
     await bot.add_cog(GeneralCommands(bot))

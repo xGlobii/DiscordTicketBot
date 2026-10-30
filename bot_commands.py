@@ -61,8 +61,21 @@ class GeneralCommands(commands.Cog):
 
         return
 
+    @app_commands.default_permissions(manage_channels=True, manage_roles=True)
+    @app_commands.command(name="create_channel_and_role", description="Creates channel and locks it for new created role")
+    async def create_channel_and_role(self, interaction: discord.Interaction, channel_and_role_name: str):
+        new_role = await interaction.guild.create_role(name=channel_and_role_name,color=discord.Color.blue())
+        new_category_channel = await interaction.guild.create_category_channel(name="Command create channel")
+
+        overwrites={
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            new_role: discord.PermissionOverwrite(view_channel=True)
+        }
+        new_channel = await interaction.guild.create_text_channel(name=channel_and_role_name, overwrites=overwrites,category=new_category_channel)
+        await interaction.response.send_message("Channel and role created", ephemeral=True)
+
     @app_commands.default_permissions(administrator=True)
-    @app_commands.command(name="add_command", description="Dodaje komendę serwerową")
+    @app_commands.command(name="create_command", description="Dodaje komendę serwerową")
     @app_commands.choices(
         command_type=[
             app_commands.Choice(name="Tekst (wiadomość)", value="text"),

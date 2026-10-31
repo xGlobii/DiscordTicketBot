@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 class SqLiteManager():
-    def __init__(self, db_path: str = "database.sqlite"):
+    def __init__(self, db_path: str = "../shared/database.sqlite"):
         self.db_path = db_path
         self.initiate_tables()
 

@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from views import PaginationView, DiscordUi
+from python.views import PaginationView, DiscordUi
 import os
 import sqlite3
 
@@ -184,7 +184,6 @@ class GeneralCommands(commands.Cog):
         opis = ""
         for cmd in commands:
             c_name = cmd["command_name"]
-            c_type = cmd["command_type"]
             opis += f"!{c_name}\n"
 
         await interaction.response.send_message(f"**Command list**:\n {opis}")

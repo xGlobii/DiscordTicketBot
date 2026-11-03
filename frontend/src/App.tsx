@@ -1,7 +1,8 @@
 import { AppLayout } from "./components/AppLayout"
 import { Commands } from "./views/Commands"
 import { Dashboard } from "./views/Dashboard"
-import { BrowserRouter, Route, Routes } from "react-router-dom"
+import { Tickets } from './views/Tickets'
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom"
 
 function App() {
   return (
@@ -9,9 +10,10 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<AppLayout/>}>
-            <Route index element={<Dashboard />}/>
-            <Route path="/dashboard" element={<Dashboard />}/>
-            <Route path="/commands" element={<Commands />}/>
+            <Route index element={<Navigate to={"/dashboard"} replace/>}/>
+            <Route path="dashboard" element={<Dashboard />}/>
+            <Route path="commands" element={<Commands />}/>
+            <Route path="tickets" element={<Tickets />}/>
           </Route>
           <Route path="*" element={<h2>Not found</h2>} />
         </Routes>

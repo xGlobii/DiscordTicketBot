@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+.active{
+    background-color: #5865f2;
+}
+
+.active:hover{
+    background-color: #6976f3;
+}

@@ -1,4 +1,6 @@
 
+using Microsoft.EntityFrameworkCore;
+
 namespace DiscordBot.Api
 {
 	public class Program
@@ -20,6 +22,12 @@ namespace DiscordBot.Api
 					});
 			});
 
+			builder.Services.AddDbContext<AppDbContext>(options =>
+			{
+				options.UseSqlite(@"Data Source=../../shared/database.sqlite")
+				.UseSnakeCaseNamingConvention();
+			});
+			
 			// Add services to the container.
 
 			builder.Services.AddControllers();

@@ -3,6 +3,7 @@ import { Commands } from "./views/Commands"
 import { Dashboard } from "./views/Dashboard"
 import { Tickets } from './views/Tickets'
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom"
+import { EditCommandModal } from "../components/EditCommandModal"
 
 function App() {
   return (

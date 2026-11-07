@@ -48,8 +48,18 @@ export function Dashboard()
 
     const status = { isOnline: true }
 
+    function testCors()
+    {
+        fetch("https://localhost:7219/api/v1/custom-commands", {method: "GET", headers: {"Content-Type": "application/json"}})
+        .then((result) => result.json())
+        .then((data) => console.log(data.valueOf()));
+    }
+
     return(
         <>
+            <button className='bg-white text-black' onClick={() => testCors()}>
+                Click me
+            </button>
             <div className='mx-5 mt-5'>
                 <div className="flex gap-3 mb-3">
                     <div className="bg-[#212525] rounded-xl p-3 flex-1 flex text-white text-2xl font-bold justify-center items-center">

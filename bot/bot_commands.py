@@ -1,7 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from python.views import PaginationView, DiscordUi
+from views import PaginationView, DiscordUi
 import os
 import sqlite3
 
@@ -140,7 +140,7 @@ class GeneralCommands(commands.Cog):
             app_commands.Choice(name="Administrator", value="administrator")
         ]
     )
-    async def add_command(self, interaction: discord.Interaction, command_name: str, command_type: app_commands.Choice[str], permission: app_commands.Choice[str], attributes: str = None):
+    async def add_command(self, interaction: discord.Interaction, command_name: str, command_type: app_commands.Choice[str], permission: app_commands.Choice[str], attributes: str = None, description: str = None):
         if interaction.guild is None:
             await interaction.response.send_message("This is guild command only")
             return
@@ -164,7 +164,7 @@ class GeneralCommands(commands.Cog):
                 await interaction.response.send_message("Command of type 'text', 'embed-text', 'dm-text' or 'random' must include specified content in 'attributes'", ephemeral=True)
                 return
 
-            self.bot.db.save_command(interaction.guild_id, c_safe_name, c_type, c_permission, attributes)
+            self.bot.db.save_command(interaction.guild_id, c_safe_name, c_type, c_permission, attributes, description)
             await interaction.response.send_message(f"Command {c_safe_name} created")
         except sqlite3.IntegrityError:
             await interaction.response.send_message(f"A command named {c_safe_name} already exists on this server", ephemeral=True)

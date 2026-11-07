@@ -27,11 +27,11 @@ class MyClient(commands.Bot):
 
     async def setup_hook(self):
         # Quick test
-        #await self.load_extension("bot_commands")
-        #MY_GUILD = discord.Object(id=1559125242272550962)
-        #self.tree.copy_global_to(guild=MY_GUILD)
-        #await self.tree.sync(guild=MY_GUILD)
-        await self.tree.sync()
+        await self.load_extension("bot_commands")
+        MY_GUILD = discord.Object(id=1559125242272550962)
+        self.tree.copy_global_to(guild=MY_GUILD)
+        await self.tree.sync(guild=MY_GUILD)
+        #await self.tree.sync()
         self.add_view(DiscordUi())
         self.add_view(CloseTicketBtn())
 

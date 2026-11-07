@@ -11,9 +11,9 @@ class SqLiteManager():
             cursor = db.cursor()
             cursor.execute(
                 """CREATE TABLE IF NOT EXISTS guild_config (
-                guild_id INTEGER PRIMARY KEY,
-                support_role_id INTEGER NULL,
-                ticket_channel_id INTEGER NULL,
+                guild_id BIGINT PRIMARY KEY,
+                support_role_id BIGINT NULL,
+                ticket_channel_id BIGINT NULL,
                 command_prefix TEXT NOT NULL DEFAULT '!'
                 )"""
             )
@@ -21,12 +21,12 @@ class SqLiteManager():
             cursor.execute(
                 """CREATE TABLE IF NOT EXISTS tickets(
                 ticket_id INTEGER PRIMARY KEY,
-                guild_id INTEGER,
-                creator_id INTEGER,
+                guild_id BIGINT,
+                creator_id BIGINT,
                 title TEXT,
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                closed_by_id INTEGER NULL,
+                closed_by_id BIGINT NULL,
                 closed_at TIMESTAMP NULL
                 )
                 """
@@ -34,11 +34,12 @@ class SqLiteManager():
 
             cursor.execute(
                 """CREATE TABLE IF NOT EXISTS guild_commands(
-                guild_id INTEGER,
+                guild_id BIGINT,
                 command_name TEXT,
                 command_type TEXT,
                 attributes TEXT NULL,
                 required_permission TEXT NULL,
+                description TEXT NULL,
                 PRIMARY KEY(guild_id, command_name)
                 )
                 """
@@ -46,7 +47,7 @@ class SqLiteManager():
 
             cursor.execute(
                 """CREATE TABLE IF NOT EXISTS guild_counters(
-                guild_id INTEGER,
+                guild_id BIGINT,
                 counter_name TEXT,
                 counter_value INTEGER DEFAULT 0,
                 PRIMARY KEY(guild_id, counter_name)
@@ -114,11 +115,11 @@ class SqLiteManager():
             cursor.execute("""SELECT title, description, created_at, closed_by_id, closed_at FROM tickets WHERE creator_id = ? AND guild_id = ? LIMIT ? OFFSET ?""", (user_id, guild_id, int(os.getenv('RECORDS_PER_PAGE', '5')), offset))
             return cursor.fetchall()
 
-    def save_command(self, guild_id: int, command_name: str, command_type: str, required_permission: str, attributes: str = None):
+    def save_command(self, guild_id: int, command_name: str, command_type: str, required_permission: str, attributes: str = None, description: str = None):
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()
-            cursor.execute("""INSERT INTO guild_commands (guild_id, command_name, command_type, required_permission, attributes)
-            VALUES (?, ? , ?, ?, ?)""", (guild_id, command_name, command_type, required_permission, attributes))
+            cursor.execute("""INSERT INTO guild_commands (guild_id, command_name, command_type, required_permission, attributes, description)
+            VALUES (?, ? , ?, ?, ?, ?)""", (guild_id, command_name, command_type, required_permission, attributes, description))
 
             if (command_type == "counter"):
                 cursor.execute("""INSERT INTO guild_counters (guild_id, counter_name) VALUES (?, ?)""", (guild_id, command_name))

@@ -87,10 +87,26 @@ class SqLiteManager():
                 (ticket_id, guild_id, creator_id, title, description, status)
             )
 
+    def get_ticket(self, ticket_id: int, guild_id: int):
+        with sqlite3.connect(self.db_path) as db:
+            db.row_factory = sqlite3.Row
+            cursor = db.cursor()
+            cursor.execute(
+                """SELECT is_claimed, creator_id FROM tickets WHERE ticket_id = ? AND guild_id = ?""", (ticket_id, guild_id)
+            )
+            return cursor.fetchone()
+
     def close_ticket(self, ticket_id: int, closed_by_id: int, status: str):
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()
             cursor.execute("""UPDATE tickets SET closed_by_id = ?, closed_at = CURRENT_TIMESTAMP, status = ? WHERE ticket_id = ?""", (closed_by_id, status, ticket_id))
+
+    def claim_ticket(self, ticket_id: int, guild_id: int):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute(
+                """UPDATE tickets SET is_claimed = 1 WHERE ticket_id = ? AND guild_id = ?""", (ticket_id, guild_id)
+            )
 
     def get_config(self, guild_id: int):
         with sqlite3.connect(self.db_path) as db:

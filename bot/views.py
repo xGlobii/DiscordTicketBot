@@ -109,12 +109,55 @@ class CloseTicketBtn(discord.ui.View):
 
         support_role_id, _ = guild_config
 
-        if interaction.user.get_role(support_role_id) or interaction.user.guild_permissions.administrator is not None:
+        ticket_details = db.get_ticket(interaction.channel.id, interaction.guild.id)
+
+        if ticket_details is None:
+            await interaction.response.send_message(f"Ticket cannot be found in database", ephemeral=True)
+
+        is_creator = ticket_details["creator_id"] == interaction.user.id
+        is_claimed = ticket_details["is_claimed"]
+        is_support = interaction.user.get_role(support_role_id) is not None
+        is_admin = interaction.user.guild_permissions.administrator
+
+        has_staff_perms = is_support or is_admin
+
+        if not is_claimed and is_creator:
             db.close_ticket(ticket_id=interaction.channel.id, closed_by_id=interaction.user.id, status="closed")
+            await interaction.response.defer()
+            await interaction.channel.delete()
+        elif has_staff_perms:
+            close_status = "resolved" if is_claimed else "closed"
+            db.close_ticket(ticket_id=interaction.channel.id, closed_by_id=interaction.user.id, status=close_status)
             await interaction.response.defer()
             await interaction.channel.delete()
         else:
             await interaction.response.send_message(f"Only an administrator can close this ticket", ephemeral=True)
+
+    @discord.ui.button(label="Claim ticket", custom_id="ticket_claim", style=discord.ButtonStyle.primary)
+    async def claimTicketBtn(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        guild_config = db.get_config(interaction.guild.id)
+
+        if guild_config is None:
+            await interaction.response.send_message(f"An error occurred with the channel configuration for this server", ephemeral=True)
+            return
+
+        support_role_id, _ = guild_config
+
+        ticket_details = db.get_ticket(interaction.channel.id, interaction.guild.id)
+
+        if ticket_details is None:
+            await interaction.response.send_message(f"Ticket cannot be found in database", ephemeral=True)
+            return
+
+        if ticket_details["is_claimed"] == True:
+            await interaction.response.send_message(f"An error has occured. Ticket is already claimed", ephemeral=True)
+            return
+
+        db.claim_ticket(interaction.channel.id, interaction.guild.id)
+        self.remove_item(button)
+        await interaction.response.edit_message(view=self)
+        await interaction.followup.send(f"Ticket is claimed", ephemeral=True)
 
 class DiscordUi(discord.ui.View):
     def __init__(self):

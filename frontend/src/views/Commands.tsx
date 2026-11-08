@@ -1,7 +1,7 @@
 import { Pencil, Trash } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { type GuildCommand } from '../models/GuildCommand'
-import { EditCommandModal } from '../../components/EditCommandModal';
+import { EditCommandModal } from '../components/EditCommandModal';
 
 export function Commands()
 {

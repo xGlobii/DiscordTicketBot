@@ -17,6 +17,10 @@ namespace DiscordBot.Api
 			modelBuilder.Entity<Command>()
 				.ToTable("guild_commands")
 				.HasKey(c => new { c.GuildId, c.CommandName });
+
+			modelBuilder.Entity<Ticket>()
+				.ToTable("tickets")
+				.HasKey(t => t.TicketId);
 		}
 	}
 }

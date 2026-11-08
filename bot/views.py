@@ -110,7 +110,7 @@ class CloseTicketBtn(discord.ui.View):
         support_role_id, _ = guild_config
 
         if interaction.user.get_role(support_role_id) or interaction.user.guild_permissions.administrator is not None:
-            db.close_ticket(ticket_id=interaction.channel.id, closed_by_id=interaction.user.id)
+            db.close_ticket(ticket_id=interaction.channel.id, closed_by_id=interaction.user.id, status="closed")
             await interaction.response.defer()
             await interaction.channel.delete()
         else:

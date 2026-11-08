@@ -1,10 +1,27 @@
+import { useState, useEffect } from "react"
+import { Pagination } from "../components/Pagination";
+import { useSearchParams } from "react-router-dom";
+
 interface Ticket
 {
-    user: string,
-    subject: string,
-    handledBy: string,
+    creatorId: string,
+    title: string,
+    closedById: string | null,
     status: "open" | "closed" | "resolved",
-    createdAt: string
+    createdAt: string,
+    closedAt: string | null
+}
+
+interface PagedTicketsDto
+{
+    tickets: Ticket[],
+    totalTickets: number,
+    openedTickets: number,
+    closedTickets: number,
+    resolvedTickets: number,
+    currentPage: number,
+    totalPages: number,
+    pageSize: number
 }
 
 const statusStyles = {
@@ -15,59 +32,51 @@ const statusStyles = {
 
 export function Tickets()
 {
-    const ticketsMock: Ticket[] = [
+    const [pagination, setPagination] = useState<PagedTicketsDto|null>(null);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const currentPage = searchParams.get("page") || 1;
+    const status = searchParams.get("status") || "all";
+    const sort = searchParams.get("sort") || "created-asc";
+
+    useEffect(() =>
+    {
+        fetch(`https://localhost:7219/api/v1/tickets/0?page=${currentPage}&status=${status}&sort=${sort}`, {method: "GET", headers: {"Content-Type": "application/json"}})
+        .then((result) => {
+            if(result.ok)
+                return result.json()
+        })
+        .then((data) => 
         {
-            handledBy: "user1",
-            status: "open",
-            subject: "test",
-            user: "user3",
-            createdAt: "03.11.2026"
-        },
-        {
-            handledBy: "user4",
-            status: "closed",
-            subject: "another test",
-            user: "user1",
-            createdAt: "03.11.2026"
-        },
-        {
-            handledBy: "user2",
-            status: "open",
-            subject: "something",
-            user: "user4",
-            createdAt: "03.11.2026"
-        },
-        {
-            handledBy: "user5",
-            status: "closed",
-            subject: "something else",
-            user: "user9",
-            createdAt: "03.11.2026"
-        },
-        {
-            handledBy: "user7",
-            status: "resolved",
-            subject: "another one",
-            user: "user3",
-            createdAt: "03.11.2026"
-        },
-        {
-            handledBy: "user1",
-            status: "resolved",
-            subject: "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
-            user: "user2",
-            createdAt: "03.11.2026"
-        },
-    ]
+            setPagination(data);
+        });
+    }, [currentPage, status, sort]);
+
+    function changeStatus(status: string)
+    {
+        const paramsToUpdate = new URLSearchParams(searchParams);
+        paramsToUpdate.set('status', status);
+        paramsToUpdate.set('page', '1');
+        setSearchParams(paramsToUpdate);
+    }
+
+    function handleSortChange(e: React.ChangeEvent<HTMLSelectElement>)
+    {
+        const selectedValue = e.currentTarget.value;
+
+        const paramsToUpdate = new URLSearchParams(searchParams);
+        paramsToUpdate.set('sort', selectedValue);
+        setSearchParams(paramsToUpdate);
+    }
 
     return(
         <>
+            {pagination !== null &&
             <div className="flex flex-col m-5">
                 {/* Header */}
                 <div className="px-5 flex-1 mb-3 rounded-2xl p-3 text-white flex flex-col">
                     <span className="text-3xl font-bold">Support Tickets</span>
                     <span>
-                        123 <span className="text-[#b5c5d7]">Closed</span> / 6 <span className="text-[#b5c5d7]">Open</span>
+                        {pagination.closedTickets} <span className="text-[#b5c5d7]">Closed</span> / {pagination.resolvedTickets} <span className="text-[#b5c5d7]">Resolved</span> / {pagination.openedTickets} <span className="text-[#b5c5d7]">Open</span>
                     </span>
                 </div>
                 {/* Search  */}
@@ -78,15 +87,17 @@ export function Tickets()
                     </form>
                     <div className="flex items-center gap-2">
                         <div className="bg-[#0d0e11] w-fit px-3 py-1.5 text-white flex gap-2 rounded-2xl">
-                            <button className="bg-[#292a2d] hover:cursor-pointer px-3 py-1.5 rounded-2xl text-white hover:bg-[#3a3b3e]">All</button>
-                            <button className="hover:cursor-pointer hover:bg-[#2f2f33] px-3 py-1.5 rounded-2xl">Open</button>
-                            <button className="hover:cursor-pointer hover:bg-[#2f2f33] px-3 py-1.5 rounded-2xl">Closed</button>
-                            <button className="hover:cursor-pointer hover:bg-[#2f2f33] px-3 py-1.5 rounded-2xl">Resolved</button>
+                            <button onClick={() => changeStatus("all")} className={`hover:cursor-pointer ${status == "all" && "filter-active"} px-3 py-1.5 rounded-2xl text-white hover:bg-[#3a3b3e]`}>All</button>
+                            <button onClick={() => changeStatus("open")} className={`hover:cursor-pointer ${status == "open" && "filter-active"} hover:bg-[#2f2f33] px-3 py-1.5 rounded-2xl`}>Open</button>
+                            <button onClick={() => changeStatus("closed")} className={`hover:cursor-pointer ${status == "closed" && "filter-active"} hover:bg-[#2f2f33] px-3 py-1.5 rounded-2xl`}>Closed</button>
+                            <button onClick={() => changeStatus("resolved")} className={`hover:cursor-pointer ${status == "resolved" && "filter-active"} hover:bg-[#2f2f33] px-3 py-1.5 rounded-2xl`}>Resolved</button>
                         </div>
                         <div>
-                            <select className="text-white bg-[#0d0e11] px-2 py-2 rounded-2xl border border-gray-500">
-                                <option>Creation time /\</option>
-                                <option>Creation time \/</option>
+                            <select onChange={handleSortChange} className="text-white bg-[#0d0e11] px-2 py-2 rounded-2xl border border-gray-500" defaultValue={sort}>
+                                <option value="created-asc">Created at ↑</option>
+                                <option value="created-desc">Created at ↓</option>
+                                <option value="closed-asc">Closed at ↑</option>
+                                <option value="closed-desc">Closed at ↓</option>
                             </select>
                         </div>
                     </div>
@@ -97,39 +108,38 @@ export function Tickets()
                     <div className="flex justify-between bg-[#0d0e11] px-3 py-1.5 rounded-t-2xl">
                         <div className="flex-2 font-semibold text-gray-400">User</div>
                         <div className="flex-3 font-semibold text-gray-400">Subject</div>
-                        <div className="flex-2 font-semibold text-gray-400">Handled by</div>
-                        <div className="flex-1 font-semibold text-gray-400">Status</div>
                         <div className="flex-1 font-semibold text-gray-400">Created at</div>
+                        <div className="flex-2 font-semibold text-gray-400">Closed by</div>
+                        <div className="flex-1 font-semibold text-gray-400">Closed at</div>
+                        <div className="flex-1 font-semibold text-gray-400">Status</div>
                     </div>
-                    {ticketsMock.map((ticket, index) => (
+                    {pagination.tickets.map((ticket, index) => (
                         <div className={`flex flex-col justify-between bg-[#1a1b1e] ${index % 2 == 1 && 'bg-[#161619]'}`}>
                             <div className="flex justify-between px-3 py-2 text-white">
-                                <div className="flex-2">{ticket.user}</div>
-                                <div className="flex-3">{ticket.subject}</div>
-                                <div className="flex-2">{ticket.handledBy}</div>
+                                <div className="flex-2">{ticket.creatorId}</div>
+                                <div className="flex-3">{ticket.title}</div>
+                                <div className="flex-1">{ticket.createdAt}</div>
+                                <div className="flex-2">{ticket.closedById ?? ""}</div>
+                                <div className="flex-1">{ticket.closedAt ?? ""}</div>
                                 <div className="flex-1">
                                     <div className={`w-fit ${statusStyles[ticket.status]}`}>{ticket.status}</div>
                                 </div>
-                                <div className="flex-1">{ticket.createdAt}</div>
                             </div>
                         </div>
                     ))}
                     <div className="justify-between bg-[#0d0e11] px-3 py-3 rounded-b-2xl text-gray-400 flex">
                         <div>
-                            Showing <span className="text-white">1-6</span> of <span className="text-white">239</span> tickets
-                        </div>
-                        <div className="text-white flex items-center gap-1">
-                            <button className="bg-[#1f1f23] text-gray-400 px-2.5 py-1 rounded-2xl hover:cursor-pointer hover:bg-[#2f2f34]">{"< Prev"}</button>
-                            <button className="active px-3 py-1 rounded-4xl hover:cursor-pointer">1</button>
-                            <button className="px-3 py-1 rounded-4xl hover:cursor-pointer hover:bg-[#2f2f33]">2</button>
-                            <button className="px-3 py-1 rounded-4xl hover:bg-[#2f2f33]">3</button>
-                            <span>...</span>
-                            <button className="px-3 py-1 rounded-4xl hover:bg-[#2f2f33]">39</button>
-                            <button className="bg-[#1f1f23] text-gray-400 px-2.5 py-1 rounded-2xl hover:cursor-pointer hover:bg-[#2f2f34]">{"Next >"}</button>
-                        </div>
+                            {pagination.currentPage > 0 && pagination.currentPage <= pagination.totalPages && 
+                                <>
+                                    Showing <span className="text-white">{((pagination.currentPage - 1) * pagination.pageSize) + 1}-{Math.min(pagination.currentPage * pagination.pageSize, (pagination.currentPage - 1) * pagination.pageSize) + pagination.tickets.length}</span> of <span className="text-white">{pagination.totalTickets}</span> tickets
+                                </>
+                            }
+                            </div>
+                        <Pagination currentPage={pagination.currentPage} totalPages={pagination.totalPages}/>
                     </div>
                 </div>
             </div>
+            }
         </>
     )
 }

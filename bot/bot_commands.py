@@ -181,12 +181,17 @@ class GeneralCommands(commands.Cog):
             await interaction.response.send_message("No commands have been created on this server")
             return
 
-        opis = ""
+        prefix = self.bot.guild_prefixes[interaction.guild_id]
+
+        desc = ""
         for cmd in commands:
             c_name = cmd["command_name"]
-            opis += f"!{c_name}\n"
+            c_desc = cmd["description"]
+            if c_desc == "":
+                c_desc = "`unspecified`"
+            desc += f"{prefix}{c_name} - {c_desc}\n"
 
-        await interaction.response.send_message(f"**Command list**:\n {opis}")
+        await interaction.response.send_message(f"**Command list**:\n {desc}")
 
 async def setup(bot):
     await bot.add_cog(GeneralCommands(bot))

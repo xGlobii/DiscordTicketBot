@@ -7,3 +7,7 @@
 .active:hover{
     background-color: #6976f3;
 }
+
+.filter-active{
+    background-color: #292a2d;
+}

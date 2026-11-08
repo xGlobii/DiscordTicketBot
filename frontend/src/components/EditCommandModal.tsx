@@ -1,4 +1,4 @@
-import { type GuildCommand } from "../src/models/GuildCommand"
+import { type GuildCommand } from "../models/GuildCommand"
 
 interface ModalProps
 {

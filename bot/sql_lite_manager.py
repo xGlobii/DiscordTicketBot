@@ -20,14 +20,16 @@ class SqLiteManager():
 
             cursor.execute(
                 """CREATE TABLE IF NOT EXISTS tickets(
-                ticket_id INTEGER PRIMARY KEY,
+                ticket_id BIGINT PRIMARY KEY,
                 guild_id BIGINT,
                 creator_id BIGINT,
                 title TEXT,
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 closed_by_id BIGINT NULL,
-                closed_at TIMESTAMP NULL
+                closed_at TIMESTAMP NULL,
+                status TEXT,
+                is_claimed INTEGER DEFAULT 0
                 )
                 """
             )
@@ -77,18 +79,18 @@ class SqLiteManager():
                 """, (guild_id, command_prefix)
             )
 
-    def save_ticket(self, ticket_id: int, guild_id: int, creator_id: int, title: str, description: str):
+    def save_ticket(self, ticket_id: int, guild_id: int, creator_id: int, title: str, description: str, status: str = "open"):
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()
             cursor.execute(
-                """ INSERT INTO tickets (ticket_id, guild_id, creator_id, title, description) VALUES (?, ?, ?, ?, ?)""",
-                (ticket_id, guild_id, creator_id, title, description)
+                """ INSERT INTO tickets (ticket_id, guild_id, creator_id, title, description, status) VALUES (?, ?, ?, ?, ?, ?)""",
+                (ticket_id, guild_id, creator_id, title, description, status)
             )
 
-    def close_ticket(self, ticket_id: int, closed_by_id: int):
+    def close_ticket(self, ticket_id: int, closed_by_id: int, status: str):
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()
-            cursor.execute("""UPDATE tickets SET closed_by_id = ?, closed_at = CURRENT_TIMESTAMP WHERE ticket_id = ?""", (closed_by_id, ticket_id))
+            cursor.execute("""UPDATE tickets SET closed_by_id = ?, closed_at = CURRENT_TIMESTAMP, status = ? WHERE ticket_id = ?""", (closed_by_id, status, ticket_id))
 
     def get_config(self, guild_id: int):
         with sqlite3.connect(self.db_path) as db:

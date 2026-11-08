@@ -10,5 +10,6 @@
 		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 		public long? ClosedById { get; set; }
 		public DateTime? ClosedAt { get; set; }
+		public string Status { get; set; } = string.Empty;
 	}
 }

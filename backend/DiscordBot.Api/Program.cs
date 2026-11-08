@@ -24,7 +24,7 @@ namespace DiscordBot.Api
 
 			builder.Services.AddDbContext<AppDbContext>(options =>
 			{
-				options.UseSqlite(@"Data Source=../../shared/database.sqlite")
+				options.UseSqlite(@"Data Source=../../shared/database.sqlite;")
 				.UseSnakeCaseNamingConvention();
 			});
 			

@@ -9,6 +9,7 @@ namespace DiscordBot.Api
 
 		public DbSet<Ticket> Tickets { get; set; }
 		public DbSet<Command> Commands { get; set; }
+		public DbSet<Heartbeat> Heartbeats { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
@@ -21,6 +22,10 @@ namespace DiscordBot.Api
 			modelBuilder.Entity<Ticket>()
 				.ToTable("tickets")
 				.HasKey(t => t.TicketId);
+
+			modelBuilder.Entity<Heartbeat>()
+				.ToTable("heartbeat")
+				.HasKey(t => t.Id);
 		}
 	}
 }

@@ -1,52 +1,64 @@
 import { Ticket, TicketCheck, BadgeAlert } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
-interface BotOperational
+interface DashboardDto
 {
-    timeStamp: string,
-    operational: boolean
+    activeTickets: number,
+    lastOpenedDate: string|null,
+    ticketsResolved: number,
+    lastResolvedDate: string|null,
+    serverCommands: number
+}
+
+interface StatusDto
+{
+    date: string,
+    isActive: boolean
 }
 
 export function Dashboard()
 {
-    const botOperationalMock: BotOperational[] = [
-        {
-            operational: true,
-            timeStamp: "data"
-        },{
-            operational: true,
-            timeStamp: "data"
-        },
-        {
-            operational: true,
-            timeStamp: "data"
-        },
-        {
-            operational: false,
-            timeStamp: "data"
-        },
-        {
-            operational: false,
-            timeStamp: "data"
-        },
-        {
-            operational: true,
-            timeStamp: "data"
-        },
-        {
-            operational: true,
-            timeStamp: "data"
-        },
-        {
-            operational: true,
-            timeStamp: "data"
-        },
-        {
-            operational: false,
-            timeStamp: "data"
-        },
-    ]
+    const [dto, setDto] = useState<DashboardDto|null>(null);
+    const [statuses, setStatus] = useState<StatusDto[] | null>(null);
+    const [currentDisplay, setCurrentDisplay] = useState<string>("Telemetry");
 
-    const status = { isOnline: true }
+    useEffect(() => {
+
+        const fetchData = async () =>
+        {
+            const [dashboardData, statusData] = await Promise.all([
+                fetch(`https://localhost:7219/api/v1/dashboard/guild/0`, {method: "GET", headers: {"Content-Type": "application/json"}}),
+                fetch(`https://localhost:7219/api/v1/dashboard/status`, {method: "GET", headers: {"Content-Type": "application/json"}})
+            ]);
+
+            if(dashboardData.ok && statusData.ok)
+            {
+                const dashboardDto = await dashboardData.json();
+                const statusDto = await statusData.json();
+
+                setDto(dashboardDto);
+                setStatus(statusDto);
+            }
+        }
+
+        fetchData();
+
+    }, [])
+
+    function calculateLastCheck() : string
+    {
+        if(statuses === null)
+        {
+            return ""
+        }
+
+        const systemDate = new Date();
+        const statusDate = new Date(statuses[statuses.length - 1].date)
+
+        const diference = Math.floor((systemDate.getTime() - statusDate.getTime()) / (1000 * 60));
+
+        return diference.toString();
+    }
 
     return(
         <>
@@ -57,12 +69,14 @@ export function Dashboard()
                     </div>
                     <div className="bg-[#212525] rounded-xl p-3 flex-1 text-white flex flex-col">
                         <span className='flex gap-1.5 items-center text-2xl mb-3 justify-center'>
+                            {statuses !== null && <>
                             <svg width="26" height="26">
-                                <circle cx="13" cy="13" r="13" className={status.isOnline ? 'fill-green-500' : 'fill-red-500'}/>
+                                <circle cx="13" cy="13" r="13" className={statuses[statuses.length - 1].isActive ? 'fill-green-500' : 'fill-red-500'}/>
                             </svg>
-                            {"{status}"}
+                            {statuses[statuses.length - 1].isActive ? "Online" : "Offline"}
+                            </>}
                         </span>
-                        <span className='self-center text-gray-500 text-sm'>Last check: 3 mins ago</span>
+                        <span className='self-center text-gray-500 text-sm'>Last check: {calculateLastCheck()} minutes ago</span>
                     </div>
                 </div>
                 <div className='flex gap-3 mb-3'>
@@ -72,11 +86,12 @@ export function Dashboard()
                             <span className='text-[#bec2ff] bg-[#2a2c4c] rounded-2xl p-1.5'><Ticket /></span>
                         </div>
                         <span className='text-3xl font-bold self-center'>
-                            1
+                            {dto?.activeTickets}
                         </span>
+                        {dto?.lastOpenedDate !== null &&
                         <span className='text-sm text-gray-500 mt-3 self-center'>
-                            Last opened at: 03.11.2026
-                        </span>
+                            Last active ticket opened at: {dto?.lastOpenedDate}
+                        </span>}
                     </div>
                     <div className='bg-[#212525] rounded-2xl flex-1 p-3 text-white flex flex-col'>
                         <div className='flex justify-between'>
@@ -84,11 +99,12 @@ export function Dashboard()
                             <span className='text-[#bec2ff] bg-[#2a2c4c] rounded-2xl p-1.5'><TicketCheck /></span>
                         </div>
                         <span className='text-3xl font-bold self-center'>
-                            3
+                            {dto?.ticketsResolved}
                         </span>
+                        {dto?.lastResolvedDate !== null &&
                         <span className='text-sm text-gray-500 mt-3 self-center'>
-                            Last resolved at: 03.11.2026
-                        </span>
+                            Last resolved at: {dto?.lastResolvedDate}
+                        </span>}
                     </div>
                     <div className='bg-[#212525] rounded-2xl flex-1 p-3 text-white flex flex-col'>
                         <div className='flex justify-between'>
@@ -96,30 +112,29 @@ export function Dashboard()
                             <span className='text-[#66de8c] bg-[#1f392e] rounded-2xl p-1.5'><BadgeAlert /></span>
                         </div>
                         <span className='text-3xl font-bold self-center'>
-                            4
+                            {dto?.serverCommands}
                         </span>
                     </div>
                 </div>
                 <div className='bg-[#212525] rounded-xl p-3 text-white'>
-                    Bot Operational Uptime (Last 6 Hours)
-                    <div className='bg-[#1a1b1e] py-4 rounded-xl'>
+                    <span>Bot Operational Uptime (Last 6 Hours)</span>
+                    <div className='bg-[#1a1b1e] mt-2 py-4 rounded-xl'>
                         <svg viewBox="0 0 358 20" className='mx-auto px-5'>
-                        {/* {botOperationalMock.map((operational, index) => 
-                        (
-                            <rect height="35" width="5" x={index * 7} fill={operational.operational ? '#00ff00' : '#ff0000'}>
-                            </rect>
-                        ))} */}
-                        {Array.from({ length: 72}).map((_, i) =>
-                        (
-                            <rect height="20" width="3" x={i * 5} className='fill-[#1f8548] hover:fill-[#3fa76a] hover:cursor-pointer' />
-                        ))}
+                        {statuses !== null &&
+                            <>
+                                {statuses.map((status, i) =>
+                                (
+                                    <rect onClick={() => setCurrentDisplay(new Date(status.date).toLocaleString('pl-PL'))} key={i} height="20" width="3" x={i * 5} className={` ${status.isActive ? "fill-[#1f8548] hover:fill-[#3fa76a]" : "fill-[#cc0000] hover:fill-[#ff0000]"}  hover:cursor-pointer`} />
+                                ))}
+                            </>
+                        }
                         </svg>
                         <div className='flex justify-between px-5 mt-3'>
                             <span className='text-gray-400'>
                                 6h ago
                             </span>
                             <span className='text-gray-700'>
-                                Telemetry
+                                {currentDisplay}
                             </span>
                             <span className='text-gray-400'>
                                 Just now

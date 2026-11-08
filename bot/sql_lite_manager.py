@@ -57,6 +57,20 @@ class SqLiteManager():
                 """
             )
 
+            cursor.execute(
+                """CREATE TABLE IF NOT EXISTS heartbeat(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )"""
+            )
+
+    def make_heartbeat(self):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute(
+                """INSERT INTO heartbeat DEFAULT VALUES"""
+            )
+
     def save_config(self, guild_id: int, support_role_id: int, ticket_channel_id: int) -> None:
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()

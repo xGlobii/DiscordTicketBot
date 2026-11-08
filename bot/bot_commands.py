@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import tasks, commands
 from views import PaginationView, DiscordUi
 import os
 import sqlite3
@@ -8,6 +8,20 @@ import sqlite3
 class GeneralCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    async def cog_load(self):
+        self.heartbeat.start()
+    
+    async def cog_unload(self):
+        self.heartbeat.cancel()
+
+    @tasks.loop(minutes=5)
+    async def heartbeat(self):
+        self.bot.db.make_heartbeat()
+
+    @heartbeat.before_loop
+    async def before_heartbeat(self):
+        await self.bot.wait_until_ready()
 
     @app_commands.command(name="ping", description="Ping pong")
     async def ping(self, interaction: discord.Interaction):

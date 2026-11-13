@@ -64,6 +64,35 @@ class SqLiteManager():
                 )"""
             )
 
+            cursor.execute(
+                """CREATE TABLE IF NOT EXISTS bot_guilds(
+                server_id STRING PRIMARY KEY)"""
+            )
+
+    def synchronize_guild_list(self, bot_guilds):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute(
+                """DELETE FROM bot_guilds""")
+            cursor.executemany(
+                """INSERT INTO bot_guilds (server_id) VALUES (?)
+                """, bot_guilds
+            )
+
+    def add_guild_to_list(self, guild_id: str):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute(
+                """INSERT OR IGNORE INTO bot_guilds (server_id) VALUES (?)""", (guild_id, )
+            )
+    
+    def remove_guild_from_list(self, guild_id: str):
+        with sqlite3.connect(self.db_path) as db:
+            cursor = db.cursor()
+            cursor.execute(
+                """DELETE FROM bot_guilds WHERE server_id = ?""", (guild_id, )
+            )
+
     def make_heartbeat(self):
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()

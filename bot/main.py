@@ -39,8 +39,19 @@ class MyClient(commands.Bot):
     async def on_ready(self):
         activity = discord.Activity(type=discord.ActivityType.playing, name="Eating chicken nuggets at KFC 🍗")
         await self.change_presence(status=discord.Status.online, activity=activity)
+
+        current_guild_ids = [(str(guild.id), ) for guild in self.guilds]
+        self.db.synchronize_guild_list(current_guild_ids)
+
         print(f"Logged on a {self.user}")
 
+    async def on_guild_join(self, guild):
+        guild_id = str(guild.id)
+        self.db.add_guild_to_list(guild_id)
+
+    async def on_guild_remove(self, guild):
+        guild_id = str(guild.id)
+        self.db.remove_guild_from_list(guild_id)
 
     async def on_message(self, message):
         if message.author == self.user:
@@ -75,12 +86,12 @@ class MyClient(commands.Bot):
             c_type = custom_command["command_type"]
 
             if c_type == "text":
-                await message.channel.send(custom_command["attributes"])
+                await message.channel.send(custom_command["attributes"].replace("{user}", message.author.mention))
                 return
 
             if c_type == "embed-text":
 
-                description = custom_command["attributes"].replace("\\n", "\n")
+                description = custom_command["attributes"].replace("\\n", "\n").replace("{user}", message.author.mention)   
 
                 embed = discord.Embed(
                     color=discord.Color.dark_blue(),

@@ -19,8 +19,6 @@ namespace DiscordBot.Api.Controllers
 		[Route("guild/{guildId}")]
 		public async Task<ActionResult> GetDashboardData([FromRoute] long guildId)
 		{
-			guildId = 1559125242272550962; // Mock
-
 			var query = _dbContext.Tickets.Where(t => t.GuildId == guildId).OrderByDescending(t => t.CreatedAt);
 
 			var activeTickets = await query
@@ -59,13 +57,14 @@ namespace DiscordBot.Api.Controllers
 
 			DateTime now = DateTime.UtcNow;
 			DateTime endDate = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute - (now.Minute % 5), 0, DateTimeKind.Utc);
+			endDate = endDate.AddMinutes(-5);
 			DateTime startDate = endDate.AddMinutes(-71 * 5);
 
 			for(int i = 0; i < 72; i++)
 			{
 				statuses[i] = new StatusDto
 				{
-					Date = startDate.AddMinutes(i * 5),
+					Date = startDate.AddMinutes((i * 5) + 5),
 					IsActive = results.Any(h => h.Date >= startDate.AddMinutes(i * 5) && h.Date < startDate.AddMinutes(5 + i * 5))
 				};
 			}

@@ -18,7 +18,8 @@ namespace DiscordBot.Api
 					{
 						policy.WithOrigins("http://localhost:5173")
 						.AllowAnyMethod()
-						.AllowAnyHeader();
+						.AllowAnyHeader()
+						.AllowCredentials();
 					});
 			});
 

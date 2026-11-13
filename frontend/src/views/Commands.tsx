@@ -2,6 +2,7 @@ import { Pencil, Trash } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { type GuildCommand } from '../models/GuildCommand'
 import { EditCommandModal } from '../components/EditCommandModal';
+import { useAuthContext } from '../components/AuthContext';
 
 export function Commands()
 {
@@ -9,12 +10,17 @@ export function Commands()
     const [isEditModalActive, setIsEditModalActive] = useState<boolean>(false);
     const [editedCommand, setEditedCommand] = useState<GuildCommand|null>(null);
 
+    const { selectedGuild } = useAuthContext();
+
     const refresh = useCallback(() =>
     {
-        fetch("https://localhost:7219/api/v1/custom-commands", {method: "GET", headers: {"Content-Type": "application/json"}})
+        if(selectedGuild === null)
+            return;
+
+        fetch(`https://localhost:7219/api/v1/custom-commands/guild/${selectedGuild}`, {method: "GET", headers: {"Content-Type": "application/json"}})
         .then((result) => result.json())
-        .then((data) => setGuildCommands(data))
-    }, []);
+        .then((data) => setGuildCommands(data));
+    }, [selectedGuild]);
 
     useEffect(() => 
     {
@@ -33,7 +39,7 @@ export function Commands()
         const attributes = formData.get("bot-response") as string;
 
         const dto: GuildCommand = {
-            guildId: "0", // Mock
+            guildId: selectedGuild!.toString(),
             commandName: commandName,
             commandType: commandType,
             attributes: attributes,
@@ -54,7 +60,7 @@ export function Commands()
 
     function editCommand(commandName: string)
     {
-        fetch(`https://localhost:7219/api/v1/custom-commands/${commandName}/guild/0`, {method: "GET", headers: {"Content-Type": "application/json"}})
+        fetch(`https://localhost:7219/api/v1/custom-commands/${commandName}/guild/${selectedGuild}`, {method: "GET", headers: {"Content-Type": "application/json"}})
         .then((result) => {
             if(result.ok)
                 return result.json()
@@ -71,7 +77,7 @@ export function Commands()
 
     function deleteCommand(commandName: string)
     {
-        fetch(`https://localhost:7219/api/v1/custom-commands/${commandName}/guild/0`, {method: "DELETE", headers: {"Content-Type": "application/json"}})
+        fetch(`https://localhost:7219/api/v1/custom-commands/${commandName}/guild/${selectedGuild}`, {method: "DELETE", headers: {"Content-Type": "application/json"}})
         .then((result) => 
         {
             if(result.ok) 
@@ -94,10 +100,15 @@ export function Commands()
                             <label htmlFor="trigger">Command Trigger<span className="text-red-400">*</span></label>
                             <input type="text" name="trigger" id="trigger" required className="bg-[#111417] text-white border align-middle mb-3 border-gray-500 resize-none w-full rounded-md"></input>
                             <label htmlFor="bot-response">Bot Response</label>
-                            <div className="mb-2 flex gap-1">
+                            <div className="mb-2 flex gap-1 items-center">
                                 <span className="text-gray-400">Insert:</span>
                                 <span className="text-green-300 bg-[#343638] px-1.5 py-0.5 rounded-xl">{"{user}"}</span>
                                 <span className="text-blue-400 bg-[#343638] px-1.5 py-0.5 rounded-xl">{"{counter}"}</span>
+                                <span className="text-gray-400 bg-[#343638] px-1.5 py-0.5 rounded-xl text-sm">
+                                    Option1
+                                    <strong className="text-purple-400 mx-1">|</strong>
+                                    Option2 (random)
+                                </span>
                             </div>
                             <textarea id="bot-response" name="bot-response" className="bg-[#111417] text-white border align-middle mb-3 border-gray-500 resize-none w-full rounded-md" rows={4}></textarea>
                             

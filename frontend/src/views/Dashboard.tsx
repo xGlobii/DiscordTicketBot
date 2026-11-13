@@ -1,5 +1,6 @@
 import { Ticket, TicketCheck, BadgeAlert } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useAuthContext } from '../components/AuthContext';
 
 interface DashboardDto
 {
@@ -22,12 +23,17 @@ export function Dashboard()
     const [statuses, setStatus] = useState<StatusDto[] | null>(null);
     const [currentDisplay, setCurrentDisplay] = useState<string>("Telemetry");
 
+    const { authData, selectedGuild } = useAuthContext();
+
     useEffect(() => {
+
+        if(selectedGuild === null)
+            return;
 
         const fetchData = async () =>
         {
             const [dashboardData, statusData] = await Promise.all([
-                fetch(`https://localhost:7219/api/v1/dashboard/guild/0`, {method: "GET", headers: {"Content-Type": "application/json"}}),
+                fetch(`https://localhost:7219/api/v1/dashboard/guild/${selectedGuild}`, {method: "GET", headers: {"Content-Type": "application/json"}}),
                 fetch(`https://localhost:7219/api/v1/dashboard/status`, {method: "GET", headers: {"Content-Type": "application/json"}})
             ]);
 
@@ -43,7 +49,7 @@ export function Dashboard()
 
         fetchData();
 
-    }, [])
+    }, [selectedGuild])
 
     function calculateLastCheck() : string
     {
@@ -65,7 +71,7 @@ export function Dashboard()
             <div className='mx-5 mt-5'>
                 <div className="flex gap-3 mb-3">
                     <div className="bg-[#212525] rounded-xl p-3 flex-1 flex text-white text-2xl font-bold justify-center items-center">
-                        Welcome back, {"{user}"} 👋
+                        Welcome back, {authData?.user.globalName ?? authData?.user.username} 👋
                     </div>
                     <div className="bg-[#212525] rounded-xl p-3 flex-1 text-white flex flex-col">
                         <span className='flex gap-1.5 items-center text-2xl mb-3 justify-center'>

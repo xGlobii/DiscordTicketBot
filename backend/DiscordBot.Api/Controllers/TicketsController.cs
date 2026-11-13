@@ -18,11 +18,9 @@ namespace DiscordBot.Api.Controllers
 		}
 
 		[HttpGet]
-		[Route("{guildId}")]
+		[Route("guild/{guildId}")]
 		public async Task<ActionResult<ICollection<PagedTicketsDto>>> Index([FromRoute] long guildId, [FromQuery] int page = 1, [FromQuery] string status = "all", [FromQuery] string sort = "created-asc")
 		{
-			guildId = 1559125242272550962; // Mock
-
 			var query = _dbContext.Tickets
 				.Where(t => t.GuildId == guildId);
 

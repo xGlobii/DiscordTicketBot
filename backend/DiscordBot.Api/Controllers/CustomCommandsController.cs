@@ -16,9 +16,10 @@ namespace DiscordBot.Api.Controllers
 		}
 
 		[HttpGet]
-		public async Task<ActionResult> Index()
+		[Route("guild/{guildId}")]
+		public async Task<ActionResult> Index([FromRoute] long guildId)
 		{
-			var result =  await _dbContext.Commands.ToListAsync();
+			var result =  await _dbContext.Commands.Where(c => c.GuildId == guildId).ToListAsync();
 			return Ok(result);
 		}
 
@@ -71,11 +72,9 @@ namespace DiscordBot.Api.Controllers
 		[HttpPost]
 		public async Task<ActionResult> AddCommand([FromBody] Command dto)
 		{
-			long mockedGuildId = 1559125242272550962;
-
 			await _dbContext.Commands.AddAsync(new Command
 			{
-				GuildId = mockedGuildId,
+				GuildId = dto.GuildId,
 				Attributes = dto.Attributes,
 				CommandName = dto.CommandName,
 				CommandType = dto.CommandType,

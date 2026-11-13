@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { Pagination } from "../components/Pagination";
 import { useSearchParams } from "react-router-dom";
+import { useAuthContext } from "../components/AuthContext";
 
 interface Ticket
 {
@@ -38,9 +39,14 @@ export function Tickets()
     const status = searchParams.get("status") || "all";
     const sort = searchParams.get("sort") || "created-asc";
 
+    const { selectedGuild } = useAuthContext();
+
     useEffect(() =>
     {
-        fetch(`https://localhost:7219/api/v1/tickets/0?page=${currentPage}&status=${status}&sort=${sort}`, {method: "GET", headers: {"Content-Type": "application/json"}})
+        if(selectedGuild === null)
+            return;
+
+        fetch(`https://localhost:7219/api/v1/tickets/guild/${selectedGuild}?page=${currentPage}&status=${status}&sort=${sort}`, {method: "GET", headers: {"Content-Type": "application/json"}})
         .then((result) => {
             if(result.ok)
                 return result.json()
@@ -49,7 +55,7 @@ export function Tickets()
         {
             setPagination(data);
         });
-    }, [currentPage, status, sort]);
+    }, [currentPage, status, sort, selectedGuild]);
 
     function changeStatus(status: string)
     {

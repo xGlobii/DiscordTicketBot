@@ -24,28 +24,53 @@ export function AuthProvider({children}: {children: React.ReactNode})
 
     useEffect(() =>
     {
-        setIsLoading(true);
-
-        fetch(`https://localhost:7219/api/v1/auth/me`, {method: "GET", headers: {"Content-Type": "application/json"}, credentials: "include"})
-        .then(async (result) => 
+        const checkAuth = async () =>
         {
-            if(result.ok)
+            setIsLoading(true);
+    
+            try
             {
-                const data = await result.json()
-                setAuthData(data);
-                setIsLogged(true);
-
+                var result = await fetch(`https://localhost:7219/api/v1/auth/me`, {method: "GET", headers: {"Content-Type": "application/json"}, credentials: "include"});
+    
+                if(result.status === 401)
+                {
+                    var refreshResult = await fetch(`https://localhost:7219/api/v1/auth/refresh`, {method: "GET", headers: {"Content-Type": "application/json"}, credentials: "include"});
+    
+                    if(refreshResult.ok)
+                    {
+                        result = await fetch(`https://localhost:7219/api/v1/auth/me`, {method: "GET", headers: {"Content-Type": "application/json"}, credentials: "include"});
+                    }
+                    else
+                    {
+                        setAuthData(null);
+                        setIsLogged(false);
+                    }
+                }
+    
+                if(result.ok)
+                {
+                    const data = await result.json();
+                    setAuthData(data);
+                    setIsLogged(true);
+                }
+                else
+                {
+                    setAuthData(null);
+                    setIsLogged(false);
+                }
             }
-            if(result.status === 401)
+            catch(error)
             {
                 setAuthData(null);
                 setIsLogged(false);
             }
-        })
-        .finally(() => 
-        {
-            setIsLoading(false);
-        });
+            finally
+            {
+                setIsLoading(false);
+            }
+
+        }
+        checkAuth();
     }, []);
 
     return(

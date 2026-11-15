@@ -1,6 +1,6 @@
 ﻿using DiscordBot.Api.DTOs;
+using DiscordBot.Api.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace DiscordBot.Api.Controllers
 {
@@ -8,79 +8,18 @@ namespace DiscordBot.Api.Controllers
 	[Route("api/v1/tickets")]
 	public class TicketsController : ControllerBase
 	{
-		private readonly AppDbContext _dbContext;
-		private readonly IConfiguration _config;
+		private readonly ITicketService _ticketService;
 
-		public TicketsController(AppDbContext dbContext, IConfiguration config)
+		public TicketsController(ITicketService ticketService)
 		{
-			_dbContext = dbContext;
-			_config = config;
+			_ticketService = ticketService;
 		}
 
 		[HttpGet]
 		[Route("guild/{guildId}")]
 		public async Task<ActionResult<ICollection<PagedTicketsDto>>> Index([FromRoute] long guildId, [FromQuery] int page = 1, [FromQuery] string status = "all", [FromQuery] string sort = "created-asc")
 		{
-			var query = _dbContext.Tickets
-				.Where(t => t.GuildId == guildId);
-
-			if(status != "all")
-			{
-				query = query.Where(t => t.Status == status);
-			}
-
-			int totalCount = await query.CountAsync();
-			int openedTickets = await query.Where(t => t.Status == "open").CountAsync();
-			int closedTickets = await query.Where(t => t.Status == "closed").CountAsync();
-			int resolvedTickets = await query.Where(t => t.Status == "resolved").CountAsync();
-
-			int PAGE_SIZE = _config.GetValue<int>("TICKETS_PAGGINATION_PAGE_SIZE", 6);
-
-			int totalPages = (int)Math.Ceiling((decimal)totalCount / PAGE_SIZE);
-
-			if(sort == "created-asc")
-			{
-				query = query.OrderBy(t => t.CreatedAt);
-			}
-			else if(sort == "created-desc")
-			{
-				query = query.OrderByDescending(t => t.CreatedAt);
-			}
-			else if (sort == "closed-asc")
-			{
-				query = query.OrderBy(t => t.ClosedAt);
-			}
-			else if (sort == "closed-desc")
-			{
-				query = query.OrderByDescending(t => t.ClosedAt);
-			}
-
-			var tickets = await query
-				.Skip((page - 1) * PAGE_SIZE)
-				.Take(PAGE_SIZE)
-				.Select(t => new TicketDto
-				{
-					ClosedAt = t.ClosedAt == null ? null : new DateOnly(t.ClosedAt.Value.Year, t.ClosedAt.Value.Month, t.ClosedAt.Value.Day),
-					ClosedById = t.ClosedById,
-					CreatedAt = new DateOnly(t.CreatedAt.Year, t.CreatedAt.Month, t.CreatedAt.Day),
-					CreatorId = t.CreatorId,
-					Description = t.Description,
-					Status = t.Status,
-					Title = t.Title
-				})
-				.ToListAsync();
-
-			var dto = new PagedTicketsDto
-			{
-				ClosedTickets = closedTickets,
-				CurrentPage = page,
-				TotalPages = totalPages,
-				OpenedTickets = openedTickets,
-				ResolvedTickets = resolvedTickets,
-				Tickets = tickets,
-				TotalTickets = totalCount,
-				PageSize = PAGE_SIZE
-			};
+			var dto = await _ticketService.GetTicketsAsync(guildId, page, status, sort);
 
 			return Ok(dto);
 		}

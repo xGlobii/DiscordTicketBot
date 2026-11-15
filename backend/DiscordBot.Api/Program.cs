@@ -1,4 +1,5 @@
 
+using DiscordBot.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace DiscordBot.Api
@@ -23,11 +24,22 @@ namespace DiscordBot.Api
 					});
 			});
 
+			builder.Services.AddHttpClient("DiscordClient", client =>
+			{
+				client.BaseAddress = new Uri("https://discord.com/api/v10");
+			});
+
+			builder.Services.AddMemoryCache();
 			builder.Services.AddDbContext<AppDbContext>(options =>
 			{
 				options.UseSqlite(@"Data Source=../../shared/database.sqlite;")
 				.UseSnakeCaseNamingConvention();
 			});
+
+			builder.Services.AddScoped<IAuthService, AuthService>();
+			builder.Services.AddScoped<ICommandService, CommandService>();
+			builder.Services.AddScoped<IDashboardService, DashboardService>();
+			builder.Services.AddScoped<ITicketService, TicketService>();
 			
 			// Add services to the container.
 

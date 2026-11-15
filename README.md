@@ -1,47 +1,57 @@
-# Discord Administration & Support Bot
+# Discord Administration & Support Ecosystem
 
-> **Note:** This project was developed as an academic assignment for university course.
+> **Note:** This project was developed as an academic assignment for a university course.
 
-A modular Discord bot written in Python using the `discord.py` library. It provides comprehensive ticket handling, custom commands, and server management tools.
+A comprehensive, full-stack ecosystem for Discord server management. It consists of a modular Discord bot written in Python and a Web Dashboard powered by a React Single Page Application (SPA) and an ASP.NET Core Web API. 
+
+The project provides comprehensive ticket handling, dynamic custom command management, server management tools, and an interactive web interface for server administrators.
 
 ---
 
-## Key features
+## Key Features
 
-**Ticket System**
-- Persistent UI panels.
-- Storing ticket history in a database.
-- Log pagination for users using interactive embeds.
+**Web Dashboard & API**
+- **Secure Authentication:** Integrated Discord OAuth2 flow utilizing highly secure, HTTP-only cookies.
+- **Performance Optimized:** Employs `IMemoryCache` (5-minute expiration) to minimize Discord API rate limits and speed up dashboard load times.
+- **Server Analytics:** Quick overview of active/resolved tickets and custom command statistics via the dashboard.
+- **Custom Command Management:** Add and configure new bot commands directly from the web interface.
 
-**Server Management**
-- Fast, command-line management of role access to channels and categories.
-- Dynamic channel creators.
-
-**Custom Command System**
-- Command management from the database without the need to edit code.
-- Support for multiple action types.
-
-**Lightweight Database**
-- Uses an optimized `SQLite3` connection.
+**Discord Bot**
+- **Ticket System:** Persistent UI panels, interactive embeds, database history, and log pagination.
+- **Server Management:** Fast, command-line management of role access to channels and categories, and dynamic channel creators.
+- **Custom Command System:** Reads dynamically created commands from the database and supports multiple action types.
 
 ---
 
 ## Technology Stack
+
+**Frontend (Web Dashboard)**
+- **Framework:** React with TypeScript
+- **State Management:** React Context API (`AuthProvider`) for global authentication state.
+- **Routing:** React Router with protected routes for unauthenticated users.
+
+**Backend (REST API)**
+- **Framework:** C# / ASP.NET Core
+- **Architecture:** Clean Architecture / business logic separated into Services.
+- **ORM:** Entity Framework Core.
+
+**Discord Bot**
 - **Language:** Python
 - **Library:** `discord.py`
-- **Database:** `sqlite3`
-- **Environment:** `python-dotenv` for configuration management.
+- **Database:** `SQLite3` integrated with both Bot and Web API.
+- **Environment:** `python-dotenv`.
 
 ---
 
 ## Configuration and Setup
-
-1. Clone the repository to your server.
-2. Install the required packages:
+> **Note:** To make sure everything works properly, run the bot first so that it generates the database file.
+### 1. Bot Setup
+1. Clone the repository.
+2. Install the required Python packages:
    ```bash
    pip install -r requirements.txt
    ```
-3. Create a `.env` file and set the environment variables:
+3. Create a `.env` file in the bot directory:
    ```env
    DISCORD_TOKEN=your_bot_token_here
    TICKETS_PER_PAGE=5
@@ -51,29 +61,59 @@ A modular Discord bot written in Python using the `discord.py` library. It provi
    python main.py
    ```
 
+### 2. Backend (ASP.NET Core API) Setup
+1. Navigate to the API project directory.
+2. Update the `appsettings.json` with your Discord Client ID, Client Secret.
+> **Note:** The database connection string is hardcoded in the application configuration to point to the shared SQLite file (../../shared/database.sqlite).
+3. Run the API:
+   ```bash
+   dotnet run
+   ```
+
+### 3. Frontend (React) Setup
+1. Navigate to the frontend directory.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm start
+   ```
+
 ---
 
-### User Guide
-The bot operates using native slash commands and interactive UI components, which means users don’t need to learn any complicated syntax.
+## User Guide
 
+### Bot Interactions
+The bot operates using native slash commands and interactive UI components, meaning users don’t need to learn complicated syntax.
 - **`/prepare`** – Generates a panel on the selected channel that allows users to open new tickets.
-- **`/add_access` and `/remove_access`** – Commands that allow you to instantly grant or revoke access to a selected text channel, voice channel, or an entire category for a specific server role.
-- **Ticket Management** – When a ticket is opened, the bot creates a private communication channel. Tickets are closed using a button in the bot’s interface.
-- **Log Viewing** – The bot generates formatted summaries of closed and active tickets in the form of paginated embeds with navigation buttons.
+- **`/add_access` & `/remove_access`** – Instantly grant or revoke access to a selected text/voice channel or an entire category for a specific server role.
+- **Ticket Management** – Creates private communication channels for tickets, closed via a button in the bot’s interface.
+- **Log Viewing** – Generates formatted summaries of closed and active tickets as paginated embeds with navigation buttons.
+
+### Web Dashboard
+- Navigate to the frontend URL.
+- Click **Login via Discord** to authenticate securely.
+- Access the **Dashboard** to view server statistics.
+- Use the **Commands** panel to dynamically add new commands to the bot.
+
+---
+
+## Architecture & Design Patterns
 
 ### API & Application Architecture
-The project actively uses Discord’s public APIs via the asynchronous `discord.py` library.
-- **Communication:** The bot listens for events and user interactions (commands, button clicks, selections from dropdown lists) via a stable WebSocket connection.
-- **Component-Based UI:** Navigation logic (e.g., `PaginationView`) does not rely on deleting and sending new messages, but rather on immediate `edit_message` requests to the Discord API, updating only the view (`embed` and the state of `discord.ui.View`). Components are proactively deactivated once page index limits are reached.
+- **Clean Architecture & DRY:** Business logic, caching, and data fetching are encapsulated within injected Services (e.g., `AuthService`).
+- **OAuth2 Flow:** The backend handles code exchange with Discord, sets secure HTTP-only cookies (`access_token`, `refresh_token`), and redirects the user. The React frontend relies on these cookies to fetch cached session data via the `/me` endpoint.
+- **CI/CD Pipeline:** The project utilizes GitHub Actions for Continuous Integration. Pushing code or publishing a release triggers automated builds and creates tracking issues automatically.
+
+### Bot Architecture (Python)
+- **Component-Based UI:** Navigation logic (e.g., `PaginationView`) does not rely on deleting and sending new messages. It uses immediate `edit_message` requests to update the view, keeping the Discord API usage low.
+- **Asynchronous Processing:** Built entirely on asynchronous methods (`async`/`await`) ensuring the main bot thread is never blocked.
 
 ### Database Schema
-The application is based on a local, optimized **SQLite3** relational database. Key data, such as ticket history, is stored in a structured format, which enables analytics and pagination.
-Example outline of the log structure:
-- `guild_id` (INT) / `user_id` (INT) – Unique identifiers for servers and users.
-- `title` (TEXT) / `description` (TEXT) – Ticket content and subject.
-- `created_at` (TIMESTAMP) / `closed_at` (TIMESTAMP) / `closed_by_id` (INT) – Timestamps and the ID of the person who closed the ticket.
-By using queries with the `LIMIT` and `OFFSET` clauses, the application retrieves from the database only those records that are currently being displayed to the user.
-
-## Architecture
-
-The bot uses a modular structure, which allows for the logical separation of functions. User interfaces are implemented using an object-oriented approach with `discord.ui.View`, ensuring full interactivity without cluttering the bot’s main thread.
+The application uses a relational database (SQLite). Key data is stored in a structured format allowing seamless communication between the Python Bot and the C# API.
+Example structures:
+- `Guilds` / `Users` – Unique identifiers for servers and users.
+- `Tickets` – Contains `title`, `description`, `created_at`, `closed_at`, and `status`.
+- `Commands` – Stores dynamically created commands (`CommandName`, `Description`, `RequiredPermission`) that the API inserts and the Bot reads.
